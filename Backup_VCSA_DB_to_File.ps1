@@ -634,7 +634,7 @@ Write-Host "--------------------------------------------------------------------
 ##Backup
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
-Write-Host "Pinging Backup location to verify connectivity"
+Write-Host "Pinging Backup Location Server to verify connectivity"
 PING $LOCATIONSERVER -n 10
 Write-Host "Beginning VCSA Backup Process"
 $BACKUPStartTime = (Get-Date -format "MMM-dd-yyyy HH-mm-ss")
