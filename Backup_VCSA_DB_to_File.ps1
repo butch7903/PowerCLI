@@ -748,7 +748,7 @@ $msg = new-object Net.Mail.MailMessage
 $smtp = new-object Net.Mail.SmtpClient($smtpServer) 
 $msg.From = $MSGFROM
 $msg.To.Add($MSGTO)
-$msg.Subject = "VCSA DB Backup Report for " + $vCenter + " - " + $BackupSuccess + " Backup Email Test"
+$msg.Subject = "VCSA DB Backup Report for " + $vCenter + " - " + $BackupSuccess
 $BodyLine1 = "Attached is the log file from this VCSA DB Backup Job. "
 $BodyLine2 = "Backup "  + $BackupSuccess
 $BodyLine3 = "Backup Script Start Time: " + $StartTime
