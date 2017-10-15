@@ -132,7 +132,6 @@ if (Get-Module -ListAvailable -Name WinSCP) {
 	#CLEAR
 }
 
-
 ##Set Variables
 ##Get Current Path
 $pwd = pwd
@@ -331,7 +330,6 @@ $UnsecureUserName = (New-Object PSCredential "user",$SecureUserName).GetNetworkC
 $MyCredential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $UnsecureUserName, (Get-Content $PasswordFile | ConvertTo-SecureString -Key $Key)
 $UnsecureUserName = "0"
 ##Linked Clone VM Folder Location (in vCenter)
-
 
 ##Get Date Info for naming of snapshot variable
 $LOGDATE = Get-Date -format "MMM-dd-yyyy_HH-mm"
