@@ -2,7 +2,7 @@
     .NOTES
 	===========================================================================
 	Created by:		Russell Hamker
-	Date:			October 14, 2017
+	Date:			October 15, 2017
 	Version:		1.0
 	Twitter:		@butch7903
 	GitHub:			https://github.com/butch7903
@@ -37,10 +37,8 @@
 		If backup process continues to fail and you are using backup encryption, change Anwserfile UseBackupPassword to No and retest.
 		If backup process continues to fail, reboot VCSA and verify that the vAPI Endpoint VCSA service and all other services have 
 		no errors.
-		If clean up fails, verify user account name stored in AnswerFile.CSV and delete LocationPassword.txt if problem 
-		persits. Delete LocationPassword.txt to reset LocationPassword and run script manually again to fill in proper info.
-		If clean up process continues to fail, verify that the PowerShell module clean up process works manually. If it does not
-		consult your backup location storage providers support for proper assistance.
+		If clean up process fails, verify that the PowerShell module clean up process works manually. If it does not
+		consult your backup location storage providers support for proper assistance or change backup protocols.
 #>
 
 ##Document Start Time
