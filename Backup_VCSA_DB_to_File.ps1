@@ -12,7 +12,7 @@
 		This script automates the full database backup process of the VMware VCSA 6.5 or higher. 
 		The script also auto deletes any version previous database backup based on a maximum day 
 		threshold you set.
-	
+
 	.DESCRIPTION
 		Use this script to backup the full VMware VCSA 6.5 or higher datebase. The script creates a 
 		current date named folder and places a backup copy of the database in that folder.
@@ -20,9 +20,9 @@
 		an AES encrypted flat format to allow for future runnings of this script.
 		Use this script with a Windows Task Scheduler or VMware Orchestrator to schedule/automate the 
 		backup process on a timely bases. 
-		
+
 	.NOTES
-        Credit goes to @AlanRenouf and @vBrianGraf for the Backup-VCSAToFile Function
+		Credit goes to @AlanRenouf and @vBrianGraf for the Backup-VCSAToFile Function
 		Backup-VCSAToFile Function updated for use with 
 		This script has been tested using FileZilla FTP Server using protocols including: FTP, FTPS 
 		This script was tested with a QNAP using protocol SCP
@@ -31,7 +31,7 @@
 		FTPS Note: Get-FTPChildItem "-Recurse" Feature does not work properly with FTPS with CrushFTP Server
 		This script does not do automatic clean up of HTTP or HTTPS protocols due to special programming needed for either protocol
 		This script requires a VMware PowerCLI minimum version 6.5.3 or greater
-		
+
 	.TROUBLESHOOTING
 		If the backup process fails, delete User.txt, Password.txt and run script manually again to fill in proper info.
 		If backup process continues to fail and you are using backup encryption, change Anwserfile UseBackupPassword to No and retest.
