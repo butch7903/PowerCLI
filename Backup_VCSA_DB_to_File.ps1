@@ -92,14 +92,14 @@ if (Get-InstalledModule -Name VMware.PowerCLI -MinimumVersion 6.5.3.6870460) {
 #Needed for FTP & FTPS File Cleanup
 if (Get-Module -ListAvailable -Name PSFTP) {
 	Write-Host "-----------------------------------------------------------------------------------------------------------------------"
-    Write-Host "Importing PowerShell Module PSFTP"
+	Write-Host "Importing PowerShell Module PSFTP"
 	Import-Module -Name PSFTP
 	Write-Host "Importing PowerShell Module PSFTP Completed"
 	Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 	#CLEAR
 } else {
 	Write-Host "-----------------------------------------------------------------------------------------------------------------------"
-    Write-Host "PowerShell Module PSFTP does not exist"
+	Write-Host "PowerShell Module PSFTP does not exist"
 	Write-Host "Setting Micrsoft PowerShell Gallery as a Trusted Repository"
 	Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
 	Write-Host "Verifying that NuGet is at minimum version 2.8.5.201 to proceed with update"
@@ -115,14 +115,14 @@ if (Get-Module -ListAvailable -Name PSFTP) {
 #Needed for SCP File Cleanup
 if (Get-Module -ListAvailable -Name WinSCP) {
 	Write-Host "-----------------------------------------------------------------------------------------------------------------------"
-    Write-Host "Importing PowerShell Module WinSCP"
+	Write-Host "Importing PowerShell Module WinSCP"
 	Import-Module -Name WinSCP
 	Write-Host "Importing PowerShell Module WinSCP Completed"
 	Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 	#CLEAR
 } else {
 	Write-Host "-----------------------------------------------------------------------------------------------------------------------"
-    Write-Host "PowerShell Module WinSCP does not exist"
+	Write-Host "PowerShell Module WinSCP does not exist"
 	Write-Host "Setting Micrsoft PowerShell Gallery as a Trusted Repository"
 	Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
 	Write-Host "Verifying that NuGet is at minimum version 2.8.5.201 to proceed with update"
