@@ -16,7 +16,7 @@
 	.DESCRIPTION
 		Use this script to backup the full VMware VCSA 6.5 or higher datebase. For the first time use,
 		run this script manually with administrator rights to correctly install any PowerShell modules needed
-		for this script to properly run. The first time this script is created it will also create a logs directory,
+		for this script to properly run. The first time this script is run it will also create a logs directory,
 		AnswserFile.csv, AES.key, BackupEncryptionPassword.txt (optional), LocationPassword.txt, Password.txt, and 
 		User.txt. This script creates a current date named folder on a target destination and places a backup copy 
 		of the database in that folder.
