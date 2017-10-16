@@ -14,8 +14,12 @@
 		threshold you set.
 
 	.DESCRIPTION
-		Use this script to backup the full VMware VCSA 6.5 or higher datebase. The script creates a 
-		current date named folder and places a backup copy of the database in that folder.
+		Use this script to backup the full VMware VCSA 6.5 or higher datebase. For the first time use,
+		run this script manually with administrator rights to correctly install any PowerShell modules needed
+		for this script to properly run. The first time this script is created it will also create a logs directory,
+		AnswserFile.csv, AES.key, BackupEncryptionPassword.txt (optional), LocationPassword.txt, Password.txt, and 
+		User.txt. This script creates a current date named folder on a target destination and places a backup copy 
+		of the database in that folder.
 		This script will store all vCenter Username/Password and the Backup Location Password in
 		an AES encrypted flat format to allow for future runnings of this script.
 		Use this script with a Windows Task Scheduler or VMware Orchestrator to schedule/automate the 
@@ -56,7 +60,7 @@ if (Get-InstalledModule -Name VMware.PowerCLI -MinimumVersion 6.5.3.6870460) {
 	#CLEAR
 } else {
 	Write-Host "-----------------------------------------------------------------------------------------------------------------------"
-    Write-Host "PowerShell Module VMware PowerCLI does not exist"
+	Write-Host "PowerShell Module VMware PowerCLI does not exist"
 	Write-Host "Setting Micrsoft PowerShell Gallery as a Trusted Repository"
 	Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
 	Write-Host "Verifying that NuGet is at minimum version 2.8.5.201 to proceed with update"
@@ -760,8 +764,9 @@ $BodyLine9 = "Backup Location was: " + $LocationType + "://" + $LocationWithDate
 $BodyLine10 = "Data deleted after day limit includes: " + $DeleteFolderList
 $msg.Body = "$BodyLine1 `n`n $BodyLine2 `n`n`n $BodyLine3 `r`n $BodyLine4 `r`n $BodyLine5 `n`n $BodyLine6 `r`n $BodyLine7 `r`n $BodyLine8 `n`n`n $BodyLine9 `n`n`n $BodyLine10"
 Write-Output $msg.Body
-
 $msg.Attachments.Add($att) 
 $smtp.Send($msg)
 }
+
+Write-Host "DB Backup Script Completed"
  
