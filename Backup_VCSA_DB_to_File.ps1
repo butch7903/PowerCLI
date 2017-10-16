@@ -742,6 +742,7 @@ Stop-Transcript
 IF ($smtpServer){
 $att = new-object Net.Mail.Attachment($LOGFILE)
 $STARTTIMESW.STOP()
+$CompletionTime = Get-Date -format "MMM-dd-yyyy HH-mm-ss"
 $msg = new-object Net.Mail.MailMessage
 $smtp = new-object Net.Mail.SmtpClient($smtpServer) 
 $msg.From = $MSGFROM
