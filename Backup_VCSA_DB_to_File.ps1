@@ -53,7 +53,7 @@ $STARTTIMESW = [Diagnostics.Stopwatch]::StartNew()
 if (Get-InstalledModule -Name VMware.PowerCLI -MinimumVersion 6.5.3.6870460) {
 	Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 	Write-Host "PowerShell Module VMware PowerCLI required minimum version was found previously installed"
-    Write-Host "Importing PowerShell Module VMware PowerCLI"
+	Write-Host "Importing PowerShell Module VMware PowerCLI"
 	Import-Module -Name VMware.PowerCLI
 	Write-Host "Importing PowerShell Module VMware PowerCLI Completed"
 	Write-Host "-----------------------------------------------------------------------------------------------------------------------"
