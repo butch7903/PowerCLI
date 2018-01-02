@@ -2,8 +2,8 @@
     .NOTES
 	===========================================================================
 	Created by:		Russell Hamker
-	Date:			October 15, 2017
-	Version:		1.0
+	Date:			January 2, 2018
+	Version:		2.0
 	Twitter:		@butch7903
 	GitHub:			https://github.com/butch7903
 	===========================================================================
@@ -17,8 +17,8 @@
 		Use this script to backup the full VMware VCSA 6.5 or higher datebase. For the first time use,
 		run this script manually with administrator rights to correctly install any PowerShell modules needed
 		for this script to properly run. The first time this script is run it will also create a logs directory,
-		AnswserFile.csv, AES.key, BackupEncryptionPassword.txt (optional), LocationPassword.txt, Password.txt, and 
-		User.txt. This script creates a current date named folder on a target destination and places a backup copy 
+		AnswserFile.csv, AES.key, BackupEncryptionPassword.txt (optional), MgrCreds.xml, and ProtocolCreds.xml. 
+		This script creates a current date named folder on a target destination and places a backup copy 
 		of the database in that folder.
 		This script will store all vCenter Username/Password and the Backup Location Password in
 		an AES encrypted flat format to allow for future runnings of this script.
@@ -27,7 +27,7 @@
 
 	.NOTES
 		Credit goes to @AlanRenouf and @vBrianGraf for the Backup-VCSAToFile Function
-		Backup-VCSAToFile Function updated for use with 
+		User Account must have the following VCSA rights: 
 		This script has been tested using FileZilla FTP Server using protocols including: FTP, FTPS 
 		This script was tested with a QNAP using protocol SCP
 		This script was tested using CrushFTP Server using protocol HTTPS
@@ -39,8 +39,9 @@
 	.TROUBLESHOOTING
 		If the backup process fails, delete User.txt, Password.txt and run script manually again to fill in proper info.
 		If backup process continues to fail and you are using backup encryption, change Anwserfile UseBackupPassword to No and retest.
-		If backup process continues to fail, reboot VCSA and verify that the vAPI Endpoint VCSA service and all other services have 
-		no errors.
+		If you receive errors similar to: 
+		Backup-VCSAToFile : A server error occurred: 'com.vmware.vapi.std.errors.unauthorized': Unable to authorize user, 
+		reboot VCSA and verify that the vAPI Endpoint VCSA service and all other services have no errors.
 		If clean up process fails, verify that the PowerShell module clean up process works manually. If it does not
 		consult your backup location storage providers support for proper assistance or change backup protocols.
 #>
@@ -141,119 +142,130 @@ if (Get-Module -ListAvailable -Name WinSCP) {
 $pwd = pwd
 ##If answerfile exists, Import it for use or create one.
 $AnswerFile = $pwd.path+"\"+"AnswerFile.csv"
-If (Test-Path $AnswerFile){
-##Import File
-Write-Host "Answer file found, importing answer file"$AnswerFile
-$Answer = Import-Csv $AnswerFile
-ForEach($Line in $Answer)
+If (Test-Path $AnswerFile)
 {
-	$VERSION = $Line.Version
-	Write-Host "Version specified in file is:"$Version
-	$SUBVERSION = $Line.SubVersion
-	Write-Host "SubVersion specified in file is:"$SubVersion
-	$VCENTER = $Line.vCenter
-	Write-Host "vCenter specified in file is:"$vCenter
-	$LOCATIONTYPE = $Line.LocationType
-	Write-Host "Location Type is:"$LocationType
-	$LOCATIONSERVER = $Line.LocationServer
-	Write-Host "Location Server is:"$LOCATIONSERVER
-	$LOCATION = $Line.Location
-	Write-Host "Location to store backup is:"$LOCATION
-	$LOCATIONUSER = $Line.LocationUser
-	Write-Host "Location User Account is:"$LOCATIONUSER
-	$COMMENTS = $Line.COMMENTS
-	Write-Host "Comments for Backup are:"$COMMENTS
-	$ExportDays = $Line.ExportDays
-	Write-Host "Will keep DB Backup for"$ExportDays" days"
-	$SmtpServer = $Line.SmtpServer
-	Write-Host "SMTP Server will be: "$SmtpServer
-	$MsgFrom = $Line.MsgFrom
-	Write-Host "Emails will be sent from: "$MsgFrom
-	$MsgTo = $Line.MsgTo
-	Write-Host "Emails will be sent to: "$MsgTo
-	$USEBACKUPPASSWORD = $Line.UseBackupPassword
-	
-	Write-Host "Continuing..."
-	Start-Sleep -Seconds 2
-}
-}
-Else {
-$Answers_List = @()
-$Answers="" | Select Version,SubVersion,vCenter,LocationType,LocationServer,Location,LocationUser,Comments,ExportDays,SmtpServer,MsgFrom,MsgTo,UseBackupPassword
-Write-Host "Answer file NOT found. Please input information to continue."
-$Version = "1"
-$Answers.Version = $Version
-$SubVersion = "0"
-$Answers.SubVersion = $SubVersion
-$vCenter = Read-Host "Input vCenter FQDN or IP
-Example: vcsa.contso.com or 10.1.1.1
-"
-$Answers.vCenter = $vCenter
-$LOCATIONTYPE = Read-Host "Input Backup Type.
-Examples: FTPS, HTTP, SCP, HTTPS, FTP"
-WHILE("FTP","FTPS","SCP","HTTP","HTTPS" -notcontains $LOCATIONTYPE)
-{
-	$LOCATIONTYPE = Read-Host "Input Backup Type.
-	Examples: FTPS, HTTP, SCP, HTTPS, FTP"
-}
-$Answers.LocationType = $LOCATIONTYPE
-$LOCATIONSERVER = Read-Host "Input Backup Location Server FQDN or IP.
-Example: ftp.contso.com or 10.1.1.1
-"
-$Answers.LocationServer = $LOCATIONSERVER
-$LOCATION = Read-Host "Input Location of where Backup Should be sent.
-Example: VMware/VCSA/DB
-Note: Place the Backups in a seperate folder from all other items
-"
-$Answers.Location = $LOCATION
-$LOCATIONUSER = Read-Host "Input user account to access location with.
-Example: BackupLocationProtocolUserAccount
-"
-$Answers.LocationUser = $LOCATIONUSER
-$COMMENTS = Read-Host "Input Backup Comments.
-Example: Weekly Backup of VCSA
-(OPTIONAL) (Leave blank if you do not wish to use this)
-"
-$Answers.Comments = $COMMENTS
-$EXPORTDAYS = Read-Host "Select Amount of days to keep DB Backup for
-Example: 90
-"
-$Answers.ExportDays = $EXPORTDAYS
-$SMTPSERVER = Read-Host "Type in a SMTP Server IP or FQDN for Email Report:
-Example: smtp.contso.com 10.1.1.1
-"
-$Answers.SmtpServer = $SMTPSERVER
-$MSGFROM = Read-Host "Type in the from Email From Address
-Example: PowerCLI@domain.com
-"
-$Answers.MsgFrom = $MSGFROM
-$MSGTO = Read-Host "Type in the list of Email Addresses to Send the Report to
-Example: user@domain.com 
-Note: For multiple emails do comma seperated: test@test.com,test2@test.com
-"
-$Answers.MsgTo = $MSGTO
-$USEBACKUPPASSWORD = Read-Host "Use Password to Encrypt BackupSuccess
-Yes or No
-"
-WHILE("yes","no" -notcontains $USEBACKUPPASSWORD)
-{
-	$USEBACKUPPASSWORD = Read-Host "Use Password to Encrypt BackupSuccess
-Yes or No
-"
-}
-$Answers.UseBackupPassword = $USEBACKUPPASSWORD
+	##Import File
+	Write-Host "Answer file found, importing answer file"$AnswerFile
+	$Answer = Import-Csv $AnswerFile
+	#Check for Old Version of Files, If found delete and request to re-input data
+	IF ($Answer.Version -eq "1")
+	{
+		$Location = $pwd.path
+		$LocationAllFiles = $Location + "\*"
+		Remove-Item AES.key -confirm:$false
+		Remove-Item AnswerFile.csv -confirm:$false
+		Remove-Item LocationPassword.txt -confirm:$false
+		Remove-Item Password.txt -confirm:$false
+		Remove-Item User.txt -confirm:$false
+		Remove-Item BackupCreds.txt -confirm:$false
+		Remove-Item MgrCreds.xml -confirm:$false
+		Remove-Item ProtocolCreds.xml -confirm:$false
+		Write-Host "Old Version of Data Found. Deleteing Old Data. Please input all configuration again."
+	}
+	#Check for Current Version File
+	If (Test-Path $AnswerFile){
+		##Import File
+		Write-Host "Answer file found, importing answer file"$AnswerFile
+		$Answer = Import-Csv $AnswerFile
+		ForEach($Line in $Answer)
+		{
+			$VERSION = $Line.Version
+			Write-Host "Version specified in file is:"$Version
+			$SUBVERSION = $Line.SubVersion
+			Write-Host "SubVersion specified in file is:"$SubVersion
+			$VCENTER = $Line.vCenter
+			Write-Host "vCenter specified in file is:"$vCenter
+			$LOCATIONTYPE = $Line.LocationType
+			Write-Host "Location Type is:"$LocationType
+			$LOCATIONSERVER = $Line.LocationServer
+			Write-Host "Location Server is:"$LOCATIONSERVER
+			$LOCATION = $Line.Location
+			Write-Host "Location to store backup is:"$LOCATION
+			$COMMENTS = $Line.COMMENTS
+			Write-Host "Comments for Backup are:"$COMMENTS
+			$ExportDays = $Line.ExportDays
+			Write-Host "Will keep DB Backup for"$ExportDays" days"
+			$SmtpServer = $Line.SmtpServer
+			Write-Host "SMTP Server will be: "$SmtpServer
+			$MsgFrom = $Line.MsgFrom
+			Write-Host "Emails will be sent from: "$MsgFrom
+			$MsgTo = $Line.MsgTo
+			Write-Host "Emails will be sent to: "$MsgTo
+			$USEBACKUPPASSWORD = $Line.UseBackupPassword
+				
+			Write-Host "Continuing..."
+			Start-Sleep -Seconds 2
+		}
+	} 
+	Else {
+		$Answers_List = @()
+		$Answers="" | Select Version,SubVersion,vCenter,LocationType,LocationServer,Location,Comments,ExportDays,SmtpServer,MsgFrom,MsgTo,UseBackupPassword
+		Write-Host "Answer file NOT found. Please input information to continue."
+		$Version = "2"
+		$Answers.Version = $Version
+		$SubVersion = "0"
+		$Answers.SubVersion = $SubVersion
+		[System.Reflection.Assembly]::LoadWithPartialName('Microsoft.VisualBasic') | Out-Null
+		$vCenter = [Microsoft.VisualBasic.Interaction]::InputBox("Input vCenter FQDN or IP
+		Example: vcsa.contso.com or 10.1.1.1
+		", "vCenter")
+		$Answers.vCenter = $vCenter
+		$LOCATIONTYPES = @("FTP","FTPS","SCP","HTTP","HTTPS")
+		If($LOCATIONTYPES.Count -gt 1)
+		{
+			   $LOCATIONTYPE = $LOCATIONTYPES | Out-GridView -Title 'Select Protocol to Use' -OutputMode Single
+		}else {$LOCATIONTYPE = "FTP"}
+		$Answers.LocationType = $LOCATIONTYPE
+		$LOCATIONSERVER = [Microsoft.VisualBasic.Interaction]::InputBox("Input Backup Location Server FQDN or IP.
+		Example: ftp.contso.com or 10.1.1.1
+		")
+		$Answers.LocationServer = $LOCATIONSERVER
+		$LOCATION = [Microsoft.VisualBasic.Interaction]::InputBox("Input Location of where Backup Should be sent.
+		Example: VMware/VCSA/DB
+		Note: Place the Backups in a seperate folder from all other items
+		")
+		$Answers.Location = $LOCATION
+		$COMMENTS = [Microsoft.VisualBasic.Interaction]::InputBox("Input Backup Comments.
+		Example: Weekly Backup of VCSA
+		(OPTIONAL) (Leave blank if you do not wish to use this)
+		")
+		$Answers.Comments = $COMMENTS
+		$EXPORTDAYS = [Microsoft.VisualBasic.Interaction]::InputBox("Select Amount of days to keep DB Backup for
+		Example: 90
+		")
+		$Answers.ExportDays = $EXPORTDAYS
+		$SMTPSERVER = [Microsoft.VisualBasic.Interaction]::InputBox("Type in a SMTP Server IP or FQDN for Email Report:
+		Example: smtp.contso.com 10.1.1.1
+		")
+		$Answers.SmtpServer = $SMTPSERVER
+		$MSGFROM = [Microsoft.VisualBasic.Interaction]::InputBox("Type in the from Email From Address
+		Example: PowerCLI@domain.com
+		")
+		$Answers.MsgFrom = $MSGFROM
+		$MSGTO = [Microsoft.VisualBasic.Interaction]::InputBox("Type in the list of Email Addresses to Send the Report to
+		Example: user@domain.com 
+		Note: For multiple emails do comma seperated: test@test.com,test2@test.com
+		")
+		$Answers.MsgTo = $MSGTO
+		$USEBACKUPPASSWORDS = @("No","Yes")
+		If($USEBACKUPPASSWORDS.Count -gt 1)
+		{
+			   $USEBACKUPPASSWORD = $USEBACKUPPASSWORDS | Out-GridView -Title 'Use Password to Encrypt Backup' -OutputMode Single
+		}else {$USEBACKUPPASSWORD = "No"}
+		$Answers.UseBackupPassword = $USEBACKUPPASSWORD
 
-
-$Answers_List += $Answers
-$Answers_List | Format-Table -AutoSize
-Write-Host "Exporting Information to File"$AnswerFile
-$Answers_List | Export-CSV -NoTypeInformation $AnswerFile
+		$Answers_List += $Answers
+		$Answers_List | Format-Table -AutoSize
+		Write-Host "Exporting Information to File"$AnswerFile
+		$Answers_List | Export-CSV -NoTypeInformation $AnswerFile
+	}
 }
 
 ##Create Secure AES Keys for User and Password Management
 $KeyFile = $pwd.path+"\"+"AES.key"
 If (Test-Path $KeyFile){
 Write-Host "AES File Exists"
+$Key = Get-Content $KeyFile
 Write-Host "Continuing..."
 }
 Else {
@@ -262,78 +274,78 @@ $Key = New-Object Byte[] 16   # You can use 16, 24, or 32 for AES
 $Key | out-file $KeyFile
 }
 
-##Create Secure Backup Encryption Password file
-If ($USEBACKUPPASSWORD -eq "Yes")
-{
-$BackupEncryptionFile = $pwd.path+"\"+"BackupEncryptionPassword.txt"
-If (Test-Path $BackupEncryptionFile)
-{
-	Write-Host "Backup Encryption Password File Exists"
-	Write-Host "Continuing..."
-}
-Else{
-	$Key = Get-Content $KeyFile
-	$BACKUPENCRYPTION =  Read-Host -AsSecureString "Enter Backup Encryption Password
-"
-	$BACKUPENCRYPTION | ConvertFrom-SecureString -key $Key | Out-File $BackupEncryptionFile
-}
-}
-
-##Create Secure User Account file
-#Specify vCenter Login info
-$UserFile = $pwd.path+"\"+"User.txt"
-If (Test-Path $UserFile){
-Write-Host "User File Exists"
+##Create Secure XML Credential File for vCenter
+$MgrCreds = $pwd.path+"\"+"MgrCreds.xml"
+If (Test-Path $MgrCreds){
+Write-Host "MgrCreds.xml file found"
 Write-Host "Continuing..."
+$ImportObject = Import-Clixml $MgrCreds
+$SecureString = ConvertTo-SecureString -String $ImportObject.Password -Key $Key
+$MyCredential = New-Object System.Management.Automation.PSCredential($ImportObject.UserName, $SecureString)
 }
-Else{
-$Key = Get-Content $KeyFile
-$vCenter_Login =  Read-Host -AsSecureString "Enter vCenter User Account.
-Example: Contoso\svc_UserName or administrator@vsphere.local
-Note: This user account must have vCenter SystemConfiguration.Administrators Permissions
-"
-$vCenter_Login | ConvertFrom-SecureString -key $Key | Out-File $UserFile
+Else {
+$newPScreds = Get-Credential -message "Enter vCenter admin creds here:"
+#$rng = [System.Security.Cryptography.RNGCryptoServiceProvider]::Create()
+#$rng.GetBytes($Key)
+$exportObject = New-Object psobject -Property @{
+    UserName = $newPScreds.UserName
+    Password = ConvertFrom-SecureString -SecureString $newPScreds.Password -Key $Key
 }
-
-##Create Secure Password file
-$PasswordFile = $pwd.path+"\"+"Password.txt"
-If (Test-Path $PasswordFile){
-Write-Host "Password File Exists"
-Write-Host "Continuing"
-}
-Else{
-$Key = Get-Content $KeyFile
-$Password = Read-Host -AsSecureString "Enter Password for vCenter Service Account
-"
-$Password | ConvertFrom-SecureString -key $Key | Out-File $PasswordFile
+$exportObject | Export-Clixml MgrCreds.xml
+$MyCredential = $newPScreds
 }
 
-##Create Secure Location Password file
-$LocationPasswordFile = $pwd.path+"\"+"LocationPassword.txt"
-If (Test-Path $LocationPasswordFile){
-Write-Host "Location Password File Exists"
-Write-Host "Continuing"
+##Create Secure XML Credential File for vCenter/NSX Access
+$ProtocolCreds = $pwd.path+"\"+"ProtocolCreds.xml"
+If (Test-Path $ProtocolCreds){
+Write-Host "ProtocolCreds.xml file found"
+Write-Host "Continuing..."
+$ImportObject = Import-Clixml $ProtocolCreds
+$SecureString = ConvertTo-SecureString -String $ImportObject.Password -Key $Key
+$ProtocolCredential = New-Object System.Management.Automation.PSCredential($ImportObject.UserName, $SecureString)
 }
-Else{
-$Key = Get-Content $KeyFile
-$LocationPassword = Read-Host -AsSecureString "Enter Password for Backup Location
-"
-$LocationPassword | ConvertFrom-SecureString -key $Key | Out-File $LocationPasswordFile
+Else {
+$ProtocolNewPScreds = Get-Credential -message "Enter the Backup Protocol Creds here:"
+#$rng = [System.Security.Cryptography.RNGCryptoServiceProvider]::Create()
+#$rng.GetBytes($Key)
+$exportObject = New-Object psobject -Property @{
+    UserName = $ProtocolNewPScreds.UserName
+    Password = ConvertFrom-SecureString -SecureString $ProtocolNewPScreds.Password -Key $Key
+}
+$exportObject | Export-Clixml ProtocolCreds.xml
+$ProtocolCredential = $ProtocolNewPScreds
 }
 
-#Convert Secure Location Password file to readable format
-$Key = Get-Content $KeyFile
-$SecureLocationPassword = (Get-Content $LocationPasswordFile | ConvertTo-SecureString -Key $Key)
+##Set Protocol Access Creds to Variables
+$LOCATIONUSER = $ProtocolCredential.UserName
+$SecureLocationPassword = $ProtocolCredential.Password
 $UnsecureLocationPassword = (New-Object PSCredential "user",$SecureLocationPassword).GetNetworkCredential().Password
 
-## Create MyCredential for access vCenter.
-##Reference http://www.adminarsenal.com/admin-arsenal-blog/secure-password-with-powershell-encrypting-credentials-part-2/
-$Key = Get-Content $KeyFile
-$SecureUserName = Get-Content $UserFile | ConvertTo-SecureString -Key $Key
-$UnsecureUserName = (New-Object PSCredential "user",$SecureUserName).GetNetworkCredential().Password
-$MyCredential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $UnsecureUserName, (Get-Content $PasswordFile | ConvertTo-SecureString -Key $Key)
-$UnsecureUserName = "0"
-##Linked Clone VM Folder Location (in vCenter)
+##Create Secure Backup Creds File for Encrypting your VCSA Backup
+$BackupCreds = $pwd.path+"\"+"BackupCreds.txt"
+if ($USEBACKUPPASSWORD -eq "yes")
+{
+	If (Test-Path $BackupCreds){
+	Write-Host "BackupCreds.txt file found"
+	Write-Host "Continuing..."
+	$SecureBackupPassword = (Get-Content $BackupCreds | ConvertTo-SecureString -Key $Key)
+	$BackupPassword = (New-Object PSCredential "user",$SecureBackupPassword).GetNetworkCredential().Password
+	}
+	Else {
+	[System.Reflection.Assembly]::LoadWithPartialName('Microsoft.VisualBasic') | Out-Null
+	$BackupPassword = [Microsoft.VisualBasic.Interaction]::InputBox("Type in the Encryption Password for VCSA Backups `
+	`n`
+	Password requirements: `
+	At least 8 characters, but no more than 20 characters. At least 1 uppercase letter. `
+	At least 1 lowercase letter. At least 1 numeric digit. At least 1 special character (any character not in [0-9,a-z,A-Z]). `
+	Only visible ASCII characters (for example, no space). 
+	")
+	##Export to AES Encrypted File
+	#Convert Backup Password to Secure String
+	$SecureBackupPassword = ConvertTo-SecureString $BackupPassword -asplaintext -force 
+	$SecureBackupPassword| ConvertFrom-SecureString -key $Key | Out-File $BackupCreds
+	}
+}
 
 ##Get Date Info for naming of snapshot variable
 $LOGDATE = Get-Date -format "MMM-dd-yyyy_HH-mm"
@@ -592,7 +604,18 @@ Write-Host "--------------------------------------------------------------------
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "Disconnecting from any Open vCenter Sessions"
-disconnect-viserver * -Confirm:$false
+TRY
+{Disconnect-VIServer * -Confirm:$false}
+CATCH
+{Write-Host "No Open vCenter Sessions found"}
+Write-Host "Disconnecting from any Open CIS vCenter Server Sessions"
+if($global:DefaultCisServers)
+{
+	Disconnect-CisServer * -Confirm:$false
+}
+ELSE{
+	Write-Host "No Open CIS Server Sessions found"
+}
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 
@@ -635,12 +658,19 @@ Write-Host "Updating Backup Command for Optional Variables Completed"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 
-##Backup
+##Testing Backup Location
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "Pinging Backup Location Server to verify connectivity"
 PING $LOCATIONSERVER -n 10
-Write-Host "Beginning VCSA Backup Process"
+Write-Host "Pinging Backup Location Server to verify connectivity Completed"
+Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
+Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+
+##Backup
+Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
+Write-Host "VCSA Backup Process Starting"
 $BACKUPStartTime = (Get-Date -format "MMM-dd-yyyy HH-mm-ss")
 $BACKUPSTARTTIMESW = [Diagnostics.Stopwatch]::StartNew()
 $BackupResults = Invoke-Expression $BackupCommand
@@ -652,6 +682,7 @@ Write-Host "--------------------------------------------------------------------
 Write-Host "Listing Backup Results"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 $BackupResults | Write-Host
+Write-Host "VCSA Backup Process Started Completed"
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 
 ##Listing results and Verifying Backup success
@@ -681,7 +712,7 @@ $limit = (Get-Date).AddDays(-$ExportDays)
 Write-Host "Data older than this date will be deleted: "$limit
 IF ($LocationType -eq "FTP"){
 	#Import-Module -Name PSFTP
-	$FTPCredential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $LocationUser, (Get-Content $LocationPasswordFile | ConvertTo-SecureString -Key $Key)
+	$FTPCredential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $LocationUser, $SecureLocationPassword
 	$FTPLocation = "ftp://" + $LocationServer
 	Set-FTPConnection -Credentials $FTPCredential -Server $FTPLocation -Session MyFTPSession -UsePassive
 	$Session = Get-FTPConnection -Session MyFTPSession
@@ -697,7 +728,7 @@ IF ($LocationType -eq "FTP"){
  }
 IF ($LocationType -eq "FTPS"){
 	#Import-Module -Name PSFTP
-	$FTPCredential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $LocationUser, (Get-Content $LocationPasswordFile | ConvertTo-SecureString -Key $Key)
+	$FTPCredential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $LocationUser, $SecureLocationPassword
 	$FTPLocation = "ftp://" + $LocationServer
 	Set-FTPConnection -Credentials $FTPCredential -Server $FTPLocation -Session MyFTPSession -EnableSSL -ignoreCert -UsePassive
 	$Session = Get-FTPConnection -Session MyFTPSession
@@ -713,7 +744,7 @@ IF ($LocationType -eq "FTPS"){
 }
  IF ($LocationType -eq "SCP"){
 	#Import-Module -Name WinSCP
-	$WINSCPCredential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $LocationUser, (Get-Content $LocationPasswordFile | ConvertTo-SecureString -Key $Key)
+	$WINSCPCredential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $LocationUser, $SecureLocationPassword
 	$Session = New-WinSCPSession -SessionOption (New-WinSCPSessionOption -HostName $LocationServer -Protocol $LocationType -GiveUpSecurityAndAcceptAnySshHostKey -Credential $WINSCPCredential)
 	$DeleteFolderList = Get-WinSCPChildItem -Path $location -WinSCPSession $Session | Where-Object { $_.LastWriteTime -lt $limit }
 	Write-Host "Folder Delete list is:"$DeleteFolderList 
@@ -761,12 +792,29 @@ $BodyLine6 = "Backup Start Time: " + $BACKUPStartTime
 $BodyLine7 = "Backup Completion Time: " + $BACKUPEndTime
 $BodyLine8 = "Total Backup Time: " + $BACKUPSTARTTIMESW.Elapsed.TotalMinutes + " Minutes"
 $BodyLine9 = "Backup Location was: " + $LocationType + "://" + $LocationWithDate
-$BodyLine10 = "Data deleted after day limit includes: " + $DeleteFolderList
-$msg.Body = "$BodyLine1 `n`n $BodyLine2 `n`n`n $BodyLine3 `r`n $BodyLine4 `r`n $BodyLine5 `n`n $BodyLine6 `r`n $BodyLine7 `r`n $BodyLine8 `n`n`n $BodyLine9 `n`n`n $BodyLine10"
+$BodyLine10 = "Data deleted after day limit includes: " + $DeleteFolderList -Join ', '
+If ($BackupPassword)
+{
+	##If No Backup Password is setup (Optional)
+	Write-Host "Encryption Password in use."
+	$BodyLine11 = "Backup was Encypted using a Backup Password to Encrypt this Backup."
+}
+$msg.Body = "
+$BodyLine1 `n `
+$BodyLine2 `n`n `
+$BodyLine3 `n
+$BodyLine4 `n
+$BodyLine5 `n`n`n `
+$BodyLine6 `n
+$BodyLine7 `n
+$BodyLine8 `n`n`n `
+$BodyLine9 `
+$BodyLine10 `
+$BodyLine11 `
+"
 Write-Output $msg.Body
 $msg.Attachments.Add($att) 
 $smtp.Send($msg)
 }
 
 Write-Host "DB Backup Script Completed"
- 
