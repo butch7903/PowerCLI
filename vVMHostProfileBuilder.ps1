@@ -2,8 +2,8 @@
     .NOTES
 	===========================================================================
 	Created by:		Russell Hamker
-	Date:			June 17, 2020
-	Version:		1.0
+	Date:			June 22, 2020
+	Version:		1.3
 	Twitter:		@butch7903
 	GitHub:			https://github.com/butch7903
 	===========================================================================
@@ -1060,48 +1060,43 @@ Write-Host "Enforcing DCUI Keyboard Profile to US Default"
 
 ##Set SysLog for VMHost
 Write-Host "Adding Syslog server for VMHost"
-#Write-Host "Please specify DNS FQDN or IP of SysLog Server"
-#Syslog.global.logHost#
-#156.132.110.72
 $GetSysLogSpec = (((($spec.ApplyProfile.Option | where {$_.key -eq "key-vim-profile-host-OptionProfile-Syslog_global_logHost"}).Policy).PolicyOption).Parameter | where {$_.key -eq "value"}).Value
 If($GetSysLogSpec)
 {
-	#$SYSLOG = Read-Host "Please provide a FQDN or IP of your SysLog (vRLI) Server Example: aoinfrvrli.imdlab.ao.dcn"
-	
+	#Enforce syslog setting
 	(((($spec.ApplyProfile.Option | where {$_.key -eq "key-vim-profile-host-OptionProfile-Syslog_global_logHost"}).Policy).PolicyOption).Parameter | where {$_.key -eq "value"}).Value = "udp://"+$SYSLOG+":514"
+	#Verify Syslog Setting
 	Write-Host "SysLog has now been updated to:"
 	(((($spec.ApplyProfile.Option | where {$_.key -eq "key-vim-profile-host-OptionProfile-Syslog_global_logHost"}).Policy).PolicyOption).Parameter | where {$_.key -eq "value"}).Value
+	#Set Syslog as a Favorite
 	Write-Host "Setting SysLog setting as a Favorite"
 	($spec.ApplyProfile.Option | where {$_.key -eq "key-vim-profile-host-OptionProfile-Syslog_global_logHost"}).Favorite=$true
 	($spec.ApplyProfile.Option | where {$_.key -eq "key-vim-profile-host-OptionProfile-Syslog_global_logHost"}).Favorite
 }
 If(!$GetSysLogSpec)
 {
-	Write-Host "SysLog Settings not Found, adding SysLog settings."
-	$configOption = $null
-	$configOption[1] = New-Object VMware.Vim.OptionProfile
-	$configOption[1].ProfileTypeName = 'OptionProfile'
-	$configOption[1].ProfileVersion = '6.7.0'
-	$configOption[1].Favorite = $true
-	$configOption[1].Enabled = $true
-	$configOption[1].Key = 'key-vim-profile-host-OptionProfile-Syslog_global_logHost'
-	$configOption[1].Policy = New-Object VMware.Vim.ProfilePolicy[] (1)
-	$configOption[1].Policy[0] = New-Object VMware.Vim.ProfilePolicy
-	$configOption[1].Policy[0].PolicyOption = New-Object VMware.Vim.PolicyOption
-	$configOption[1].Policy[0].PolicyOption.Parameter = New-Object VMware.Vim.KeyAnyValue[] (2)
-	$configOption[1].Policy[0].PolicyOption.Parameter[0] = New-Object VMware.Vim.KeyAnyValue
-	$configOption[1].Policy[0].PolicyOption.Parameter[0].Value = 'Syslog.global.logHost'
-	$configOption[1].Policy[0].PolicyOption.Parameter[0].Key = 'key'
-	$configOption[1].Policy[0].PolicyOption.Parameter[1] = New-Object VMware.Vim.KeyAnyValue
-	#$SYSLOG = Read-Host "Please provide a FQDN or IP of your SysLog (vRLI) Server Example: aoinfrvrli.imdlab.ao.dcn"
-	$configOption[1].Policy[0].PolicyOption.Parameter[1].Value = "udp://$SYSLOG:514"
-	$configOption[1].Policy[0].PolicyOption.Parameter[1].Key = 'value'
-	$configOption[1].Policy[0].PolicyOption.Id = 'FixedConfigOption'
-	$configOption[1].Policy[0].Id = 'ConfigOptionPolicy'
-	
-	##Add Options to SPEC
-	Write-Host "Adding Options to SPEC"
-	$spec.ApplyProfile.Option +=@($configOption)
+	Write-Host "Syslog Settings not Found, adding Syslog settings."
+	#Update Value to Fixed
+	($spec.ApplyProfile.Option | where {$_.key -eq "key-vim-profile-host-OptionProfile-Syslog_global_logHost"}).Policy[0].PolicyOption.Id = 'FixedConfigOption'
+	#Create Parameters Array
+	$TEMPARRAY = @()
+	$TEMP = New-Object VMware.Vim.KeyAnyValue
+	$TEMP.Key = 'key'
+	$TEMP.Value = 'Syslog.global.logHost'
+	$TEMPARRAY += $TEMP
+	$TEMP = New-Object VMware.Vim.KeyAnyValue
+	$TEMP.Key = 'value'
+	$TEMP.Value = "udp://"+$SYSLOG+":514"
+	$TEMPARRAY += $TEMP
+	#Replace Default Parameters
+	($spec.ApplyProfile.Option | where {$_.key -eq "key-vim-profile-host-OptionProfile-Syslog_global_logHost"}).Policy[0].PolicyOption.Parameter = $TEMPARRAY 
+	#Verify Syslog Setting
+	Write-Host "SysLog has now been updated to:"
+	(((($spec.ApplyProfile.Option | where {$_.key -eq "key-vim-profile-host-OptionProfile-Syslog_global_logHost"}).Policy).PolicyOption).Parameter | where {$_.key -eq "value"}).Value
+	#Set Syslog as a Favorite
+	Write-Host "Setting SysLog setting as a Favorite"
+	($spec.ApplyProfile.Option | where {$_.key -eq "key-vim-profile-host-OptionProfile-Syslog_global_logHost"}).Favorite=$true
+	($spec.ApplyProfile.Option | where {$_.key -eq "key-vim-profile-host-OptionProfile-Syslog_global_logHost"}).Favorite
 }
 
 ##Setting VMFS3_UseATSForHBOnVMFS5
@@ -1123,6 +1118,7 @@ If($GetUseATSForHBOnVMFS5Spec.count -lt 1)
 	$configOption[0].ProfileTypeName = 'OptionProfile'
 	$configOption[0].ProfileVersion = '6.7.0'
 	$configOption[0].Enabled = $true
+	$configOption[0].Favorite = $true
 	$configOption[0].Key = 'key-vim-profile-host-OptionProfile-'
 	$configOption[0].Policy = New-Object VMware.Vim.ProfilePolicy[] (1)
 	$configOption[0].Policy[0] = New-Object VMware.Vim.ProfilePolicy
@@ -1138,7 +1134,7 @@ If($GetUseATSForHBOnVMFS5Spec.count -lt 1)
 	$configOption[0].Policy[0].Id = 'ConfigOptionPolicy'
 	
 	##Add Options to SPEC
-	Write-Host "Adding Options to SPEC"
+	Write-Host "Adding VMFS3_UseATSForHBOnVMFS5 to SPEC"
 	$spec.ApplyProfile.Option +=@($configOption)
 }
 
@@ -1237,41 +1233,43 @@ If($FIXEDNTPVERIFY)
 Write-Host "Completed setting NTP Settings"
 
 ##Set DNS Settings
-Write-Host "Setting Host Profile DNS Settings Based on Site"
+Write-Host "Setting Host Profile DNS Settings Based on Site"$SITE
 $DNSSERVERLISTARRAY = ($DNSSERVERLIST.Split(',') | % { $_.Trim() })
 $DNSSEARCHDOMAINSARRAY = ($DNSSEARCHDOMAINS.Split(',') | % { $_.Trim() })
 #Set Host Profile DNS List
 Write-Host "Setting Host Profile DNS Server List to $DNSSERVERLIST"
 #((((($spec.ApplyProfile.Network.Property | Where {$_.PropertyName -eq "GenericNetStackInstanceProfile"}).Profile | Where {$_.ProfileTypeName -eq "GenericNetStackInstanceProfile"}).Property | Where {$_.PropertyName -eq "GenericDnsConfigProfile"}).Profile.Policy | Where {$_.Id -eq "DnsConfigPolicy"}).PolicyOption.Parameter | Where {$_.Key -eq "address"}).Value = $DNSSERVERLISTARRAY
-$spec.ApplyProfile.Network.Property[0].Profile[0].Property[0].Profile.Policy[0].PolicyOption.Parameter[0].Value = New-Object String[] ($DNSSERVERLISTARRAY.Count)
+#$spec.ApplyProfile.Network.Property[0].Profile[0].Property[0].Profile.Policy[0].PolicyOption.Parameter[0].Value = New-Object String[] ($DNSSERVERLISTARRAY.Count)
+(((((($spec.ApplyProfile.Network.Property[0].Profile | Where {$_.key -eq 'key-vim-profile-host-GenericNetStackInstanceProfile-defaultTcpipStack'}).Property) | Where {$_.PropertyName -eq 'GenericDnsConfigProfile'}).Profile | Where {$_.ProfileTypeName -eq 'GenericDnsConfigProfile'}).Policy | Where{$_.Id -eq 'DnsConfigPolicy'}).PolicyOption.Parameter | where {$_.Key -eq 'address'}).Value = New-Object String[] ($DNSSERVERLISTARRAY.Count)
 $CL = $null
 $CL = 0
 ForEach($DNSSERVER in $DNSSERVERLISTARRAY)
 {
-	$spec.ApplyProfile.Network.Property[0].Profile[0].Property[0].Profile.Policy[0].PolicyOption.Parameter[0].Value[$CL] = $DNSSERVER
+	(((((($spec.ApplyProfile.Network.Property[0].Profile | Where {$_.key -eq 'key-vim-profile-host-GenericNetStackInstanceProfile-defaultTcpipStack'}).Property) | Where {$_.PropertyName -eq 'GenericDnsConfigProfile'}).Profile | Where {$_.ProfileTypeName -eq 'GenericDnsConfigProfile'}).Policy | Where{$_.Id -eq 'DnsConfigPolicy'}).PolicyOption.Parameter | where {$_.Key -eq 'address'}).Value[$CL] = $DNSSERVER
 	$CL = $CL+1
 }
 Write-Host "Completed setting Host Profile DNS Server List is now set to:"
-$spec.ApplyProfile.Network.Property[0].Profile[0].Property[0].Profile.Policy[0].PolicyOption.Parameter[0].Value
+(((((($spec.ApplyProfile.Network.Property[0].Profile | Where {$_.key -eq 'key-vim-profile-host-GenericNetStackInstanceProfile-defaultTcpipStack'}).Property) | Where {$_.PropertyName -eq 'GenericDnsConfigProfile'}).Profile | Where {$_.ProfileTypeName -eq 'GenericDnsConfigProfile'}).Policy | Where{$_.Id -eq 'DnsConfigPolicy'}).PolicyOption.Parameter | where {$_.Key -eq 'address'}).Value
 #Set Host Profile DNS list to False (Change this to True if using DHCP)
 Write-Host "Setting Host Profile DNS Server List from DHCP to False"
-$spec.ApplyProfile.Network.Property[0].Profile[0].Property[0].Profile.Policy[0].PolicyOption.Parameter[1].Value = $False
-$spec.ApplyProfile.Network.Property[0].Profile[0].Property[0].Profile.Policy[0].PolicyOption.Parameter[1].Value
+(((((($spec.ApplyProfile.Network.Property[0].Profile | Where {$_.key -eq 'key-vim-profile-host-GenericNetStackInstanceProfile-defaultTcpipStack'}).Property) | Where {$_.PropertyName -eq 'GenericDnsConfigProfile'}).Profile | Where {$_.ProfileTypeName -eq 'GenericDnsConfigProfile'}).Policy | Where{$_.Id -eq 'DnsConfigPolicy'}).PolicyOption.Parameter | where {$_.Key -eq 'dhcp'}).Value = $False
+(((((($spec.ApplyProfile.Network.Property[0].Profile | Where {$_.key -eq 'key-vim-profile-host-GenericNetStackInstanceProfile-defaultTcpipStack'}).Property) | Where {$_.PropertyName -eq 'GenericDnsConfigProfile'}).Profile | Where {$_.ProfileTypeName -eq 'GenericDnsConfigProfile'}).Policy | Where{$_.Id -eq 'DnsConfigPolicy'}).PolicyOption.Parameter | where {$_.Key -eq 'dhcp'}).Value
 Write-Host "Setting Host Profile DNS Domain name to: $DNSDOMAIN"
-$spec.ApplyProfile.Network.Property[0].Profile[0].Property[0].Profile.Policy[0].PolicyOption.Parameter[2].Value = $DNSDOMAIN
-$spec.ApplyProfile.Network.Property[0].Profile[0].Property[0].Profile.Policy[0].PolicyOption.Parameter[2].Value
+(((((($spec.ApplyProfile.Network.Property[0].Profile | Where {$_.key -eq 'key-vim-profile-host-GenericNetStackInstanceProfile-defaultTcpipStack'}).Property) | Where {$_.PropertyName -eq 'GenericDnsConfigProfile'}).Profile | Where {$_.ProfileTypeName -eq 'GenericDnsConfigProfile'}).Policy | Where{$_.Id -eq 'DnsConfigPolicy'}).PolicyOption.Parameter | where {$_.Key -eq 'domainName'}).Value = $DNSDOMAIN
+(((((($spec.ApplyProfile.Network.Property[0].Profile | Where {$_.key -eq 'key-vim-profile-host-GenericNetStackInstanceProfile-defaultTcpipStack'}).Property) | Where {$_.PropertyName -eq 'GenericDnsConfigProfile'}).Profile | Where {$_.ProfileTypeName -eq 'GenericDnsConfigProfile'}).Policy | Where{$_.Id -eq 'DnsConfigPolicy'}).PolicyOption.Parameter | where {$_.Key -eq 'domainName'}).Value
 Write-Host "Setting Host Search Domain(s) to: $DNSSEARCHDOMAINS"
-$spec.ApplyProfile.Network.Property[0].Profile[0].Property[0].Profile.Policy[0].PolicyOption.Parameter[3].Value = New-Object String[] ($DNSSEARCHDOMAINSARRAY.Count)
+(((((($spec.ApplyProfile.Network.Property[0].Profile | Where {$_.key -eq 'key-vim-profile-host-GenericNetStackInstanceProfile-defaultTcpipStack'}).Property) | Where {$_.PropertyName -eq 'GenericDnsConfigProfile'}).Profile | Where {$_.ProfileTypeName -eq 'GenericDnsConfigProfile'}).Policy | Where{$_.Id -eq 'DnsConfigPolicy'}).PolicyOption.Parameter | where {$_.Key -eq 'searchDomain'}).Value = New-Object String[] ($DNSSEARCHDOMAINSARRAY.Count)
 $CL = $null
 $CL = 0
 ForEach($DNSSEARCHDOMAIN in $DNSSEARCHDOMAINSARRAY)
 {
-	$spec.ApplyProfile.Network.Property[0].Profile[0].Property[0].Profile.Policy[0].PolicyOption.Parameter[3].Value[$CL] = $DNSSEARCHDOMAIN
+	(((((($spec.ApplyProfile.Network.Property[0].Profile | Where {$_.key -eq 'key-vim-profile-host-GenericNetStackInstanceProfile-defaultTcpipStack'}).Property) | Where {$_.PropertyName -eq 'GenericDnsConfigProfile'}).Profile | Where {$_.ProfileTypeName -eq 'GenericDnsConfigProfile'}).Policy | Where{$_.Id -eq 'DnsConfigPolicy'}).PolicyOption.Parameter | where {$_.Key -eq 'searchDomain'}).Value[$CL] = $DNSSEARCHDOMAIN
 	$CL = $CL+1
 }
-$spec.ApplyProfile.Network.Property[0].Profile[0].Property[0].Profile.Policy[0].PolicyOption.Parameter[3].Value
+(((((($spec.ApplyProfile.Network.Property[0].Profile | Where {$_.key -eq 'key-vim-profile-host-GenericNetStackInstanceProfile-defaultTcpipStack'}).Property) | Where {$_.PropertyName -eq 'GenericDnsConfigProfile'}).Profile | Where {$_.ProfileTypeName -eq 'GenericDnsConfigProfile'}).Policy | Where{$_.Id -eq 'DnsConfigPolicy'}).PolicyOption.Parameter | where {$_.Key -eq 'searchDomain'}).Value
 Write-Host "Setting defaultTcpipStack > DNS Configuration as Favorite"
-$spec.ApplyProfile.Network.Property[0].Profile[0].Property[0].Profile[0].Favorite = $TRUE
+(((($spec.ApplyProfile.Network.Property[0].Profile | Where {$_.key -eq 'key-vim-profile-host-GenericNetStackInstanceProfile-defaultTcpipStack'}).Property) | Where {$_.PropertyName -eq 'GenericDnsConfigProfile'}).Profile | Where {$_.ProfileTypeName -eq 'GenericDnsConfigProfile'}).Favorite = $TRUE
+Write-Host "Completed setting Host Profile DNS Settings Based on Site"$SITE
 
 ##Set FIPS Mode Service Configuration
 #security_FipsProfile_FipsProfile
