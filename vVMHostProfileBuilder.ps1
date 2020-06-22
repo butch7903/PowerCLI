@@ -900,30 +900,59 @@ ForEach ($p in ($spec.ApplyProfile.Storage.Property.Profile | Where {$_.ProfileT
 }
 ##Disable vSAN Configuration
 #vsan_vsanProfiles_VSANProfile
-Write-Host "Disabling Storage Configuration>vSAN Configuration"
-ForEach ($p in ($spec.ApplyProfile.Storage.Property.Profile | Where {$_.ProfileTypeName -eq "vsan_vsanProfiles_VSANProfile"}))
+If($CLUSTER.VsanEnabled -eq $false)
 {
-    if ($p.Enabled){
-        $p.Enabled=$False
-    }
-    foreach ($pa in $p.Property.Profile)
+	Write-Host "Disabling Storage Configuration>vSAN Configuration"
+	ForEach ($p in ($spec.ApplyProfile.Storage.Property.Profile | Where {$_.ProfileTypeName -eq "vsan_vsanProfiles_VSANProfile"}))
 	{
-		if ($pa.Enabled)
-		{
-			#$pa
-			$pa.Enabled=$False
-			#$pa
+		if ($p.Enabled){
+			$p.Enabled=$False
 		}
-        ForEach ($paa in $pa.Property.Profile)
+		foreach ($pa in $p.Property.Profile)
 		{
-			If($paa.Enabled)
+			if ($pa.Enabled)
 			{
-				#$paa
-				$paa.Enabled=$False
-				#$paa
+				#$pa
+				$pa.Enabled=$False
+				#$pa
 			}
-        }
-    }
+			ForEach ($paa in $pa.Property.Profile)
+			{
+				If($paa.Enabled)
+				{
+					#$paa
+					$paa.Enabled=$False
+					#$paa
+				}
+			}
+		}
+	}
+}ELSE{
+	Write-Host "vSAN Enabled Cluster Detected. Leaving vSAN configuration enabled in Host Profile."
+	ForEach ($p in ($spec.ApplyProfile.Storage.Property.Profile | Where {$_.ProfileTypeName -eq "vsan_vsanProfiles_VSANProfile"}))
+	{
+		if ($p.Favorite){
+			$p.Favorite=$True
+		}
+		foreach ($pa in $p.Property.Profile)
+		{
+			if ($pa.Favorite)
+			{
+				#$pa
+				$pa.Favorite=$True
+				#$pa
+			}
+			ForEach ($paa in $pa.Property.Profile)
+			{
+				If($paa.Favorite)
+				{
+					#$paa
+					$paa.Enabled=$True
+					#$paa
+				}
+			}
+		}
+	}
 }
 ##Disable ESX Info
 #info_esxInfo_EsxInfo
