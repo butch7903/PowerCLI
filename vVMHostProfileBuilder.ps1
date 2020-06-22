@@ -3,7 +3,7 @@
 	===========================================================================
 	Created by:		Russell Hamker
 	Date:			June 22, 2020
-	Version:		1.3
+	Version:		1.4
 	Twitter:		@butch7903
 	GitHub:			https://github.com/butch7903
 	===========================================================================
@@ -1043,6 +1043,24 @@ Write-Host "--------------------------------------------------------------------
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "Adding Best Practices Configuration"
+##Set CEIP Opt In to Yes
+#key-vim-profile-host-OptionProfile-UserVars_HostClientCEIPOptIn
+$CEIPOPTINSTATUS = (($spec.ApplyProfile.Option | where {$_.Key -eq 'key-vim-profile-host-OptionProfile-UserVars_HostClientCEIPOptIn'}).Policy | Where {$_.Id -eq 'ConfigOptionPolicy'}).PolicyOption | Where {$_.Id -eq 'FixedConfigOption'}
+If($CEIPOPTINSTATUS)
+{
+	Write-Host "Enforcing Host Client CEIP Opt In to yes"
+	(((($spec.ApplyProfile.Option | where {$_.Key -eq 'key-vim-profile-host-OptionProfile-UserVars_HostClientCEIPOptIn'}).Policy | Where {$_.Id -eq 'ConfigOptionPolicy'}).PolicyOption | Where {$_.Id -eq 'FixedConfigOption'}).Parameter |Where {$_.Key -eq 'value'}).Value = 1 #0 for ask, 1 for yes, 2 for no
+	Write-Host "Setting Host Client CEIP Opt In as a Favorite"
+	($spec.ApplyProfile.Option | where {$_.Key -eq 'key-vim-profile-host-OptionProfile-UserVars_HostClientCEIPOptIn'}).Favorite = $True
+	Write-Host "Completed enforcing Host Client CEIP Opt In to yes"
+}Else{
+	Write-Host "Host Client CEIP Opt In not found. Adding configuration"
+	(($spec.ApplyProfile.Option | where {$_.Key -eq 'key-vim-profile-host-OptionProfile-UserVars_HostClientCEIPOptIn'}).Policy | Where {$_.Id -eq 'ConfigOptionPolicy'}).PolicyOption.Id = 'FixedConfigOption'
+	(((($spec.ApplyProfile.Option | where {$_.Key -eq 'key-vim-profile-host-OptionProfile-UserVars_HostClientCEIPOptIn'}).Policy | Where {$_.Id -eq 'ConfigOptionPolicy'}).PolicyOption | Where {$_.Id -eq 'FixedConfigOption'}).Parameter |Where {$_.Key -eq 'value'}).Value = 1 #0 for ask, 1 for yes, 2 for no
+	Write-Hpst "Setting Host Client CEIP Opt In as a Favorite"
+	($spec.ApplyProfile.Option | where {$_.Key -eq 'key-vim-profile-host-OptionProfile-UserVars_HostClientCEIPOptIn'}).Favorite = $True
+}
+
 ##Set Scratch Disk Requirement
 Write-Host "Checking if Scratch Disk is set as a requirement under Advanced Configuration Settings>Advanced Options>ScratchConfig"
 #hostsFile_hostsFile_EtcHostsProfile
