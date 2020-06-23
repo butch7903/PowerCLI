@@ -14,7 +14,7 @@
 		NTP, DNS, enforce setting Services to specific settings, and add SATP Claimrules.
 
 	.DESCRIPTION
-		Use this script to create a Host profile for a CLUSTER of VMHosts. The only
+		Use this script to create a Host profile for a Cluster of VMHosts. The only
 		change this script makes to a host itself is to apply specific Power Policy
 		configuration prior to configuring the Host Profile for optimal config. After
 		the script completes it will apply the Host Profile to the cluster.
