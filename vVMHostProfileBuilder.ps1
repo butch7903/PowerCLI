@@ -2,8 +2,8 @@
     .NOTES
 	===========================================================================
 	Created by:		Russell Hamker
-	Date:			June 22, 2020
-	Version:		1.4
+	Date:			June 23, 2020
+	Version:		1.6
 	Twitter:		@butch7903
 	GitHub:			https://github.com/butch7903
 	===========================================================================
@@ -730,7 +730,7 @@ Write-Host "--------------------------------------------------------------------
 ##Export VMHost Config to Profile
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
-Write-Host "Exporting VMHost profile from VMHost $VMHOST in CLUSTER $CLUSTER"
+Write-Host "Exporting VMHost profile from VMHost $VMHOST in Cluster $CLUSTER"
 New-VMHostProfile -Name (($CLUSTER.Name) + "_temp") -ReferenceHost $VMHOST -Confirm:$false -Description "Automated Host Profile created for Cluster $CLUSTER, created from VMHost $VMHOST on Date $LOGDATE"
 Write-Host "Completed exporting VMHost profile from VMHost $VMHOST in CLUSTER $CLUSTER"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
@@ -1043,61 +1043,56 @@ Write-Host "--------------------------------------------------------------------
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "Adding Best Practices Configuration"
+
 ##Set CEIP Opt In to Yes
 #key-vim-profile-host-OptionProfile-UserVars_HostClientCEIPOptIn
 $CEIPOPTINSTATUS = (($spec.ApplyProfile.Option | where {$_.Key -eq 'key-vim-profile-host-OptionProfile-UserVars_HostClientCEIPOptIn'}).Policy | Where {$_.Id -eq 'ConfigOptionPolicy'}).PolicyOption | Where {$_.Id -eq 'FixedConfigOption'}
 If($CEIPOPTINSTATUS)
 {
-	Write-Host "Enforcing Host Client CEIP Opt In to yes"
-	(((($spec.ApplyProfile.Option | where {$_.Key -eq 'key-vim-profile-host-OptionProfile-UserVars_HostClientCEIPOptIn'}).Policy | Where {$_.Id -eq 'ConfigOptionPolicy'}).PolicyOption | Where {$_.Id -eq 'FixedConfigOption'}).Parameter |Where {$_.Key -eq 'value'}).Value = 1 #0 for ask, 1 for yes, 2 for no
+	Write-Host "CEIP Settings verified. Enforcing Host Client CEIP Opt In to yes"
+	(((($spec.ApplyProfile.Option | where {$_.Key -eq 'key-vim-profile-host-OptionProfile-UserVars_HostClientCEIPOptIn'}).Policy | Where {$_.Id -eq 'ConfigOptionPolicy'}).PolicyOption | Where {$_.Id -eq 'FixedConfigOption'}).Parameter |Where {$_.Key -eq 'value'}).Value = '1' #0 for ask, 1 for yes, 2 for no
 	Write-Host "Setting Host Client CEIP Opt In as a Favorite"
 	($spec.ApplyProfile.Option | where {$_.Key -eq 'key-vim-profile-host-OptionProfile-UserVars_HostClientCEIPOptIn'}).Favorite = $True
 	Write-Host "Completed enforcing Host Client CEIP Opt In to yes"
 }Else{
 	Write-Host "Host Client CEIP Opt In not found. Adding configuration"
 	(($spec.ApplyProfile.Option | where {$_.Key -eq 'key-vim-profile-host-OptionProfile-UserVars_HostClientCEIPOptIn'}).Policy | Where {$_.Id -eq 'ConfigOptionPolicy'}).PolicyOption.Id = 'FixedConfigOption'
-	(((($spec.ApplyProfile.Option | where {$_.Key -eq 'key-vim-profile-host-OptionProfile-UserVars_HostClientCEIPOptIn'}).Policy | Where {$_.Id -eq 'ConfigOptionPolicy'}).PolicyOption | Where {$_.Id -eq 'FixedConfigOption'}).Parameter |Where {$_.Key -eq 'value'}).Value = 1 #0 for ask, 1 for yes, 2 for no
+	(((($spec.ApplyProfile.Option | where {$_.Key -eq 'key-vim-profile-host-OptionProfile-UserVars_HostClientCEIPOptIn'}).Policy | Where {$_.Id -eq 'ConfigOptionPolicy'}).PolicyOption | Where {$_.Id -eq 'FixedConfigOption'}).Parameter |Where {$_.Key -eq 'value'}).Value = '1' #0 for ask, 1 for yes, 2 for no
 	Write-Hpst "Setting Host Client CEIP Opt In as a Favorite"
 	($spec.ApplyProfile.Option | where {$_.Key -eq 'key-vim-profile-host-OptionProfile-UserVars_HostClientCEIPOptIn'}).Favorite = $True
 }
 
 ##Set Scratch Disk Requirement
 Write-Host "Checking if Scratch Disk is set as a requirement under Advanced Configuration Settings>Advanced Options>ScratchConfig"
-#hostsFile_hostsFile_EtcHostsProfile
-#Reference: https://communities.vmware.com/thread/341937
-#Used VCSA Code Capture to create the Advanced Settings
-$SCRATCHSTATUS = $spec.ApplyProfile.Option | where {$_.Key -eq "key-vim-profile-host-OptionProfile-ScratchConfig.ConfiguredScratchLocation"}
-IF($SCRATCHSTATUS.count -eq 1)
+$SCRATCHSTATUS = $spec.ApplyProfile.Option | where {$_.Key -eq "key-vim-profile-host-OptionProfile-ScratchConfig_ConfiguredScratchLocation"}
+IF($SCRATCHSTATUS)
 {
 	Write-Host "Scratch Disk Configuration already exists :)"
 	Write-Host "Setting Scratch Disk as Favorite"
-	($spec.ApplyProfile.Option | where {$_.Key -eq "key-vim-profile-host-OptionProfile-ScratchConfig.ConfiguredScratchLocation"}).Favorite = $true
-	($spec.ApplyProfile.Option | where {$_.Key -eq "key-vim-profile-host-OptionProfile-ScratchConfig.ConfiguredScratchLocation"}).Favorite
-}
-If($SCRATCHSTATUS.count -eq 0)
-{
-	Write-Host "Scratch Disk Configuration not found. Adding Configuration"
+	($spec.ApplyProfile.Option | where {$_.Key -eq "key-vim-profile-host-OptionProfile-ScratchConfig_ConfiguredScratchLocation"}).Favorite = $true
+	($spec.ApplyProfile.Option | where {$_.Key -eq "key-vim-profile-host-OptionProfile-ScratchConfig_ConfiguredScratchLocation"}).Favorite
+}ELSE{
+	Write-Host "Scratch Disk Configuration not found."
+	Write-Host "Adding Scratch Disk to Configuration"
 	$configOption = $null
-	$configOption = New-Object VMware.Vim.OptionProfile[] (10999)
-	$configOption[0] = New-Object VMware.Vim.OptionProfile
+	$configOption = New-Object VMware.Vim.OptionProfile
+	$configOption[0].Key = 'key-vim-profile-host-OptionProfile-ScratchConfig_ConfiguredScratchLocation'
 	$configOption[0].ProfileTypeName = 'OptionProfile'
 	$configOption[0].ProfileVersion = '6.7.0'
 	$configOption[0].Enabled = $true
 	$configOption[0].Favorite = $true
-	$configOption[0].Key = 'key-vim-profile-host-OptionProfile-ScratchConfig.ConfiguredScratchLocation'
-	$configOption[0].Policy = New-Object VMware.Vim.ProfilePolicy[] (1)
-	$configOption[0].Policy[0] = New-Object VMware.Vim.ProfilePolicy
+	$configOption[0].Policy = New-Object VMware.Vim.ProfilePolicy
+	$configOption[0].Policy[0].Id = 'ConfigOptionPolicy'
 	$configOption[0].Policy[0].PolicyOption = New-Object VMware.Vim.PolicyOption
+	$configOption[0].Policy[0].PolicyOption.Id = 'UserInputAdvancedConfigOption'
 	$configOption[0].Policy[0].PolicyOption.Parameter = New-Object VMware.Vim.KeyAnyValue[] (1)
 	$configOption[0].Policy[0].PolicyOption.Parameter[0] = New-Object VMware.Vim.KeyAnyValue
 	$configOption[0].Policy[0].PolicyOption.Parameter[0].Value = 'ScratchConfig.ConfiguredScratchLocation'
 	$configOption[0].Policy[0].PolicyOption.Parameter[0].Key = 'key'
-	$configOption[0].Policy[0].PolicyOption.Id = 'UserInputAdvancedConfigOption'
-	$configOption[0].Policy[0].Id = 'ConfigOptionPolicy'
-	
 	##Add Options to SPEC
 	Write-Host "Completed Scratch Disk Configuration."
 	$spec.ApplyProfile.Option +=@($configOption)
+	Write-Host "Completed adding Scratch Disk to Configuration"
 }
 
 ##Set Keyboard Profile
@@ -1279,6 +1274,7 @@ If($FIXEDNTPVERIFY)
 }
 Write-Host "Completed setting NTP Settings"
 
+
 ##Set DNS Settings
 Write-Host "Setting Host Profile DNS Settings Based on Site"$SITE
 $DNSSERVERLISTARRAY = ($DNSSERVERLIST.Split(',') | % { $_.Trim() })
@@ -1317,6 +1313,7 @@ ForEach($DNSSEARCHDOMAIN in $DNSSEARCHDOMAINSARRAY)
 Write-Host "Setting defaultTcpipStack > DNS Configuration as Favorite"
 (((($spec.ApplyProfile.Network.Property[0].Profile | Where {$_.key -eq 'key-vim-profile-host-GenericNetStackInstanceProfile-defaultTcpipStack'}).Property) | Where {$_.PropertyName -eq 'GenericDnsConfigProfile'}).Profile | Where {$_.ProfileTypeName -eq 'GenericDnsConfigProfile'}).Favorite = $TRUE
 Write-Host "Completed setting Host Profile DNS Settings Based on Site"$SITE
+
 
 ##Set FIPS Mode Service Configuration
 #security_FipsProfile_FipsProfile
@@ -1417,7 +1414,7 @@ $SVCSTEMP.StartupPolicy = 'On' #Set to On, Off, or Automatic
 $SVCSTEMP.Favorite = $True
 $SVCSARRAY += $SVCSTEMP
 $SVCSTEMP = "" | Select Name, StartupPolicy, Favorite
-$SVCSTEMP.Name = 'xorg'	#X.Org Server
+$SVCSTEMP.Name = 'xorg'	#XOrg Server used for 3D GPU Passthrough
 $SVCSTEMP.StartupPolicy = 'Off' #Set to On, Off, or Automatic
 $SVCSTEMP.Favorite = $False
 $SVCSARRAY += $SVCSTEMP
@@ -1483,6 +1480,7 @@ IF($SVCSARRAY)
 
 	($spec.ApplyProfile.Property | Where {$_.PropertyName -eq 'service_serviceProfile_ServiceConfigProfile'}).Profile = $PROFILES
 }
+
 
 ##Enforing SATP Claimrule(s)
 Write-Host "Enforcing/Setting SATP Claimrule(s)"
