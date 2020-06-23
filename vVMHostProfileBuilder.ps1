@@ -14,7 +14,7 @@
 		NTP, DNS, enforce setting Services to specific settings, and add SATP Claimrules.
 
 	.DESCRIPTION
-		Use this script to create a Host profile for a Cluster of VMHosts. The only
+		Use this script to create a Host profile for a CLUSTER of VMHosts. The only
 		change this script makes to a host itself is to apply specific Power Policy
 		configuration prior to configuring the Host Profile for optimal config. After
 		the script completes it will apply the Host Profile to the cluster.
@@ -1090,7 +1090,7 @@ IF($SCRATCHSTATUS)
 	$configOption[0].Policy[0].PolicyOption.Parameter[0].Value = 'ScratchConfig.ConfiguredScratchLocation'
 	$configOption[0].Policy[0].PolicyOption.Parameter[0].Key = 'key'
 	##Add Options to SPEC
-	Write-Host "Completed Scratch Disk Configuration."
+	Write-Host "Adding Scratch Disk Configuration to SPEC"
 	$spec.ApplyProfile.Option +=@($configOption)
 	Write-Host "Completed adding Scratch Disk to Configuration"
 }
