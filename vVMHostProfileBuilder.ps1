@@ -3,7 +3,7 @@
 	===========================================================================
 	Created by:		Russell Hamker
 	Date:			June 23, 2020
-	Version:		1.6
+	Version:		1.7
 	Twitter:		@butch7903
 	GitHub:			https://github.com/butch7903
 	===========================================================================
@@ -1064,6 +1064,7 @@ If($CEIPOPTINSTATUS)
 
 ##Set Scratch Disk Requirement
 Write-Host "Checking if Scratch Disk is set as a requirement under Advanced Configuration Settings>Advanced Options>ScratchConfig"
+#ScratchConfig.ConfiguredScratchLocation
 $SCRATCHSTATUS = $spec.ApplyProfile.Option | where {$_.Key -eq "key-vim-profile-host-OptionProfile-ScratchConfig_ConfiguredScratchLocation"}
 IF($SCRATCHSTATUS)
 {
@@ -1102,7 +1103,7 @@ Write-Host "Enforcing DCUI Keyboard Profile to US Default"
 ((($spec.ApplyProfile.Property.Profile |Where {$_.ProfileTypeName -eq "keyboardConfig_keyboardProfile_KeyboardProfile"}).Policy).PolicyOption).Parameter = $null
 
 ##Set SysLog for VMHost
-Write-Host "Adding Syslog server for VMHost"
+Write-Host "Adding Syslog Settings"
 $GetSysLogSpec = (((($spec.ApplyProfile.Option | where {$_.key -eq "key-vim-profile-host-OptionProfile-Syslog_global_logHost"}).Policy).PolicyOption).Parameter | where {$_.key -eq "value"}).Value
 If($GetSysLogSpec)
 {
@@ -1115,6 +1116,14 @@ If($GetSysLogSpec)
 	Write-Host "Setting SysLog setting as a Favorite"
 	($spec.ApplyProfile.Option | where {$_.key -eq "key-vim-profile-host-OptionProfile-Syslog_global_logHost"}).Favorite=$true
 	($spec.ApplyProfile.Option | where {$_.key -eq "key-vim-profile-host-OptionProfile-Syslog_global_logHost"}).Favorite
+	Write-Host "Setting SysLog Global Log Dir to Scratch Disk"
+	$PolicyOption =  New-Object VMware.Vim.PolicyOption
+	$PolicyOption[0].Id = 'SetDefaultConfigOption'
+	$PolicyOption[0].Parameter = New-Object VMware.Vim.KeyAnyValue
+	$PolicyOption[0].Parameter[0].Key = 'key'
+	$PolicyOption[0].Parameter[0].Value = 'Syslog.global.logDir'
+	(($spec.ApplyProfile.Option | where {$_.key -eq "key-vim-profile-host-OptionProfile-Syslog_global_logDir"}).Policy | Where {$_.Id -eq 'ConfigOptionPolicy'}).PolicyOption = $PolicyOption 
+	Write-Host "Completed Adding Syslog Settings"
 }
 If(!$GetSysLogSpec)
 {
@@ -1140,6 +1149,14 @@ If(!$GetSysLogSpec)
 	Write-Host "Setting SysLog setting as a Favorite"
 	($spec.ApplyProfile.Option | where {$_.key -eq "key-vim-profile-host-OptionProfile-Syslog_global_logHost"}).Favorite=$true
 	($spec.ApplyProfile.Option | where {$_.key -eq "key-vim-profile-host-OptionProfile-Syslog_global_logHost"}).Favorite
+	Write-Host "Setting SysLog Global Log Dir to Scratch Disk"
+	$PolicyOption =  New-Object VMware.Vim.PolicyOption
+	$PolicyOption[0].Id = 'SetDefaultConfigOption'
+	$PolicyOption[0].Parameter = New-Object VMware.Vim.KeyAnyValue
+	$PolicyOption[0].Parameter[0].Key = 'key'
+	$PolicyOption[0].Parameter[0].Value = 'Syslog.global.logDir'
+	(($spec.ApplyProfile.Option | where {$_.key -eq "key-vim-profile-host-OptionProfile-Syslog_global_logDir"}).Policy | Where {$_.Id -eq 'ConfigOptionPolicy'}).PolicyOption = $PolicyOption 
+	Write-Host "Completed adding Syslog server for VMHost"
 }
 
 ##Setting VMFS3_UseATSForHBOnVMFS5
