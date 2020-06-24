@@ -1071,6 +1071,7 @@ IF($SCRATCHSTATUS)
 	Write-Host "Setting Scratch Disk as Favorite"
 	($spec.ApplyProfile.Option | where {$_.Key -eq "key-vim-profile-host-OptionProfile-ScratchConfig_ConfiguredScratchLocation"}).Favorite = $true
 	($spec.ApplyProfile.Option | where {$_.Key -eq "key-vim-profile-host-OptionProfile-ScratchConfig_ConfiguredScratchLocation"}).Favorite
+	Write-Host "Completed Updating Scratch Disk Configuration"
 }ELSE{
 	Write-Host "Scratch Disk Configuration not found."
 	Write-Host "Adding Scratch Disk to Configuration"
