@@ -2,8 +2,8 @@
     .NOTES
 	===========================================================================
 	Created by:		Russell Hamker
-	Date:			June 23, 2020
-	Version:		1.7
+	Date:			July 24, 2020
+	Version:		1.9
 	Twitter:		@butch7903
 	GitHub:			https://github.com/butch7903
 	===========================================================================
@@ -710,23 +710,6 @@ Write-Host "Completed Removing Any Previous Host Profiles with the Cluster name 
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 
-##Enforce setting VMHost to Power Management Policy to High Performance
-Write-Host "-----------------------------------------------------------------------------------------------------------------------"
-Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
-Write-Host "Setting Power Policy on VMHOST $VMHOST to High Performance"
-Write-Host "Note: This code was added as a work around due to not being able ot manipulate the Power Settings on the Host Profile itself."
-$VIEW = (Get-VMHost $VMHOST | Get-View)
-<#
-Reference: http://blog.johnwray.com/post/2017/03/10/esxi-change-power-policy-to-high-performance-powercli
-1=HighPerformance
-2=Balanced
-3=LowPower
-#>
-(Get-View $VIEW.ConfigManager.PowerSystem).ConfigurePowerPolicy(1)
-Write-Host "Completed setting Power Policy on VMHOST $VMHOST to High Performance"
-Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
-Write-Host "-----------------------------------------------------------------------------------------------------------------------"
-
 ##Export VMHost Config to Profile
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
@@ -1063,7 +1046,7 @@ If($CEIPOPTINSTATUS)
 }
 
 ##Set Scratch Disk Requirement
-Write-Host "Checking if Scratch Disk is set as a requirement under Advanced Configuration Settings>Advanced Options>ScratchConfig"
+Write-Host "Checking if Scratch Disk is set as a requirement under Advanced Configuration Settings > Advanced Options > ScratchConfig"
 #ScratchConfig.ConfiguredScratchLocation
 $SCRATCHSTATUS = $spec.ApplyProfile.Option | where {$_.Key -eq "key-vim-profile-host-OptionProfile-ScratchConfig_ConfiguredScratchLocation"}
 IF($SCRATCHSTATUS)
@@ -1072,6 +1055,21 @@ IF($SCRATCHSTATUS)
 	Write-Host "Setting Scratch Disk as Favorite"
 	($spec.ApplyProfile.Option | where {$_.Key -eq "key-vim-profile-host-OptionProfile-ScratchConfig_ConfiguredScratchLocation"}).Favorite = $true
 	($spec.ApplyProfile.Option | where {$_.Key -eq "key-vim-profile-host-OptionProfile-ScratchConfig_ConfiguredScratchLocation"}).Favorite
+	IF(!($spec.ApplyProfile.Option | where {$_.Key -eq "key-vim-profile-host-OptionProfile-ScratchConfig_ConfiguredScratchLocation"}).Policy[0].PolicyOption)
+	{
+		Write-Host "Scratch Disk configuration Policy Setting Not Found. Creating"
+		($spec.ApplyProfile.Option | where {$_.Key -eq "key-vim-profile-host-OptionProfile-ScratchConfig_ConfiguredScratchLocation"}).Policy[0].PolicyOption = New-Object VMware.Vim.PolicyOption
+		($spec.ApplyProfile.Option | where {$_.Key -eq "key-vim-profile-host-OptionProfile-ScratchConfig_ConfiguredScratchLocation"}).Policy[0].PolicyOption.Id = "UserInputAdvancedConfigOption"
+		($spec.ApplyProfile.Option | where {$_.Key -eq "key-vim-profile-host-OptionProfile-ScratchConfig_ConfiguredScratchLocation"}).Policy[0].PolicyOption.Parameter = New-Object VMware.Vim.KeyAnyValue[] (1)
+		($spec.ApplyProfile.Option | where {$_.Key -eq "key-vim-profile-host-OptionProfile-ScratchConfig_ConfiguredScratchLocation"}).Policy[0].PolicyOption.Parameter[0] = New-Object VMware.Vim.KeyAnyValue
+		($spec.ApplyProfile.Option | where {$_.Key -eq "key-vim-profile-host-OptionProfile-ScratchConfig_ConfiguredScratchLocation"}).Policy[0].PolicyOption.Parameter[0].Value = 'ScratchConfig.ConfiguredScratchLocation'
+		($spec.ApplyProfile.Option | where {$_.Key -eq "key-vim-profile-host-OptionProfile-ScratchConfig_ConfiguredScratchLocation"}).Policy[0].PolicyOption.Parameter[0].Key = 'key'	
+	}
+	IF(($spec.ApplyProfile.Option | where {$_.Key -eq "key-vim-profile-host-OptionProfile-ScratchConfig_ConfiguredScratchLocation"}).Policy[0].PolicyOption.Id -ne "UserInputAdvancedConfigOption")
+	{
+		Write-Host "Scratch Disk configuration setting found, but not enforced, enforcing"
+		($spec.ApplyProfile.Option | where {$_.Key -eq "key-vim-profile-host-OptionProfile-ScratchConfig_ConfiguredScratchLocation"}).Policy[0].PolicyOption.Id = "UserInputAdvancedConfigOption"
+	}
 	Write-Host "Completed Updating Scratch Disk Configuration"
 }ELSE{
 	Write-Host "Scratch Disk Configuration not found."
@@ -1224,15 +1222,16 @@ Write-Host "Enforcing Host Profile Logging Level. Advanced Configuration Setting
 ##Enforce Power System Configuration
 #powerSystem_powerSystem_PowerSystemProfile
 Write-Host "Setting Power System Profile as a Favorite. Advanced Configuration Settings > Power System Configuration > Power System"
-(($spec.ApplyProfile.Property | where {$_.PropertyName -eq "powerSystem_powerSystem_PowerSystemProfile"}).Profile | Where {$_.ProfileTypeName -eq "powerSystem_powerSystem_PowerSystemProfile"}).Favorite = $true
+(($spec.ApplyProfile.Property | where {$_.PropertyName -eq "powerSystem_powerSystem_PowerSystemProfile"}).Profile | Where {$_.ProfileTypeName -eq "powerSystem_powerSystem_PowerSystemProfile"}).Favorite = $true 
+Write-Host "Enforcing Host Power System settings. Power System Configuration > Power System"
+((($spec.ApplyProfile.Property | where {$_.PropertyName -eq "powerSystem_powerSystem_PowerSystemProfile"}).Profile | Where {$_.ProfileTypeName -eq "powerSystem_powerSystem_PowerSystemProfile"}).Policy | where {$_.Id -eq "powerSystem.powerSystem.CpuPolicy"}).PolicyOption.id = "powerSystem.powerSystem.DynamicCpuPolicyOption"
 <#
-#Non-Functional. Opened VMware Support case to troubleshoot. Support Case # 20130695506  
-Write-Host "Setting Host Power System settings. Power System Configuration > Power System"
-((($spec.ApplyProfile.Property | where {$_.PropertyName -eq "powerSystem_powerSystem_PowerSystemProfile"}).Profile | Where {$_.ProfileTypeName -eq "powerSystem_powerSystem_PowerSystemProfile"}).Policy | where {$_.Id -eq "powerSystem.powerSystem.CpuPolicy"}).PolicyOption.Parameter = New-Object VMware.Vim.KeyAnyValue
-((($spec.ApplyProfile.Property | where {$_.PropertyName -eq "powerSystem_powerSystem_PowerSystemProfile"}).Profile | Where {$_.ProfileTypeName -eq "powerSystem_powerSystem_PowerSystemProfile"}).Policy | where {$_.Id -eq "powerSystem.powerSystem.CpuPolicy"}).PolicyOption.Parameter[0].Key = 'value'
-((($spec.ApplyProfile.Property | where {$_.PropertyName -eq "powerSystem_powerSystem_PowerSystemProfile"}).Profile | Where {$_.ProfileTypeName -eq "powerSystem_powerSystem_PowerSystemProfile"}).Policy | where {$_.Id -eq "powerSystem.powerSystem.CpuPolicy"}).PolicyOption.Parameter[0].Value = 'high_performance'
-
-((($spec.ApplyProfile.Property | where {$_.PropertyName -eq "powerSystem_powerSystem_PowerSystemProfile"}).Profile | Where {$_.ProfileTypeName -eq "powerSystem_powerSystem_PowerSystemProfile"}).Policy | where {$_.Id -eq "powerSystem.powerSystem.CpuPolicy"}).PolicyOption.Parameter
+#Power Options#
+Balanced  --------  powerSystem.powerSystem.DynamicCpuPolicyOption  
+High Performance--  powerSystem.powerSystem.StaticCpuPolicyOption
+Low Power --------  powerSystem.powerSystem.LowCpuPolicyOption
+Custome   --------  powerSystem.powerSystem.CustomCpuPolicyOption
+Explicit option --- NoDefaultOption
 #>
 
 ##Set NTP Settings
@@ -1499,7 +1498,6 @@ IF($SVCSARRAY)
 	($spec.ApplyProfile.Property | Where {$_.PropertyName -eq 'service_serviceProfile_ServiceConfigProfile'}).Profile = $PROFILES
 }
 
-
 ##Enforing SATP Claimrule(s)
 Write-Host "Enforcing/Setting SATP Claimrule(s)"
 $CL = 0
@@ -1586,6 +1584,25 @@ ForEach($SATP in $SATPARRAY)
 	$CL = $CL+1
 	Write-Host "Completed adding SATP Claimrule for"$SATP.Vendor
 }
+
+##Enforce Clearing CIM Indication Subscriptions
+Write-Host "Removing any CIM Indication Subscriptions. General System Configuration > Management Agent Configuration > CIM Indication Subscriptions"
+(($spec.ApplyProfile.Property | Where {$_.PropertyName -eq "cimIndications_cimIndicationsProfile_CimIndications"}).Profile).Property.Profile = $null
+Write-Host "Completed removing any CIM Indication Subscriptions"
+
+#Functional. Opened VMware Support case to troubleshoot. Support Case # 20130695506/20140259207 
+Write-Host "Setting Host Power System settings. Power System Configuration > Power System"
+((($spec.ApplyProfile.Property | where {$_.PropertyName -eq "powerSystem_powerSystem_PowerSystemProfile"}).Profile | Where {$_.ProfileTypeName -eq "powerSystem_powerSystem_PowerSystemProfile"}).Policy | where {$_.Id -eq "powerSystem.powerSystem.CpuPolicy"}).PolicyOption.id = "powerSystem.powerSystem.DynamicCpuPolicyOption"
+<#
+Power Options
+Balanced  --------  powerSystem.powerSystem.DynamicCpuPolicyOption  
+High Performance--  powerSystem.powerSystem.StaticCpuPolicyOption
+Low Power --------  powerSystem.powerSystem.LowCpuPolicyOption
+Custome   --------  powerSystem.powerSystem.CustomCpuPolicyOption
+Explicit option --- NoDefaultOption
+
+#>
+
 Write-Host "Completed adding Best Practices Configuration"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
