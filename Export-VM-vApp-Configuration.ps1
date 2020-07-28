@@ -13,8 +13,8 @@
 
 	.DESCRIPTION
 		Use this script to select a VM that had vApp settings originally 
-		applied. This script will then export/backup the VMs vApp configuration 
-		to a JSON file.
+		applied. This script will then export the VMs vApp configuration to a
+		JSON file.
 	.NOTES
 		This script requires a VMware PowerCLI minimum version 11.4 or greater. 
 
@@ -74,8 +74,15 @@ function Export-VM-vApp-Configuration {
 	$pwd = pwd
 	#Convert File PATH
 	$FILEPATH = $pwd.path
+	##Create Export Folder
+	$ExportFolder = "$FILEPATH\Export"
+	If (Test-Path $ExportFolder){
+		Write-Host "Export Directory Created. Continuing..."
+	}Else{
+		New-Item $ExportFolder -type directory
+	}
 	#Setting JSON PATH
-	$JSONPATH = "$FILEPATH\$VMNAME"+"_Export-VM-vApp-Configuration.json"
+	$JSONPATH = "$ExportFolder\$VMNAME"+"_Export-VM-vApp-Configuration.json"
 	##Get VM Info
 	$VM = Get-VM $VMNAME
 	##Parse VM Data
