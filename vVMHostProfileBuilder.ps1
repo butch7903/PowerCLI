@@ -2,12 +2,11 @@
     .NOTES
 	===========================================================================
 	Created by:		Russell Hamker
-	Date:			July 24, 2020
-	Version:		1.9
+	Date:			August 3, 2020
+	Version:		1.10
 	Twitter:		@butch7903
 	GitHub:			https://github.com/butch7903
 	===========================================================================
-	
 
 	.SYNOPSIS
 		This script will generate a Host Profile from a Host, modify it to disconnect 
@@ -1585,6 +1584,49 @@ ForEach($SATP in $SATPARRAY)
 	$CL = $CL+1
 	Write-Host "Completed adding SATP Claimrule for"$SATP.Vendor
 }
+
+##Enforce Clearing Host SNMP Configuration
+Write-Host "Clearing any SNMP Configurations. General System Configuration > Management Agent Configuration > SNMP Agent Configuration > Other SNMP configuration"
+(($spec.ApplyProfile.Property | Where {$_.PropertyName -eq "snmp_GenericAgentProfiles_GenericAgentConfigProfile"}).Profile.Property.Profile.Policy.PolicyOption.Parameter | Where {$_.Key -eq 'enable'}).Value = $false
+#Create parameter array without communities parameter to clear any SNMP communities
+$PARMARRAY = @()
+$TEMPPARM = $null
+$TEMPPARM = New-Object VMware.Vim.KeyAnyValue
+$TEMPPARM.Key = "authentication"
+$TEMPPARM.value = ""
+$PARMARRAY += $TEMPPARM
+$TEMPPARM = $null
+$TEMPPARM = New-Object VMware.Vim.KeyAnyValue
+$TEMPPARM.Key = "port"
+$TEMPPARM.value = 161
+$PARMARRAY += $TEMPPARM
+$TEMPPARM = $null
+$TEMPPARM = New-Object VMware.Vim.KeyAnyValue
+$TEMPPARM.Key = "enable"
+$TEMPPARM.value = $false
+$PARMARRAY += $TEMPPARM
+$TEMPPARM = $null
+$TEMPPARM = New-Object VMware.Vim.KeyAnyValue
+$TEMPPARM.Key = "hwsrc"
+$TEMPPARM.value = "indications"
+$PARMARRAY += $TEMPPARM
+$TEMPPARM = $null
+$TEMPPARM = New-Object VMware.Vim.KeyAnyValue
+$TEMPPARM.Key = "largestorage"
+$TEMPPARM.value = $true
+$PARMARRAY += $TEMPPARM
+$TEMPPARM = $null
+$TEMPPARM = New-Object VMware.Vim.KeyAnyValue
+$TEMPPARM.Key = "privacy"
+$TEMPPARM.value = ""
+$PARMARRAY += $TEMPPARM
+$TEMPPARM = $null
+$TEMPPARM = New-Object VMware.Vim.KeyAnyValue
+$TEMPPARM.Key = "loglevel"
+$TEMPPARM.value = "info"
+$PARMARRAY += $TEMPPARM
+($spec.ApplyProfile.Property | Where {$_.PropertyName -eq "snmp_GenericAgentProfiles_GenericAgentConfigProfile"}).Profile.Property.Profile.Policy.PolicyOption.Parameter = $PARMARRAY
+Write-Host "Completed clearing any SNMP configurations"
 
 ##Enforce Clearing CIM Indication Subscriptions
 Write-Host "Removing any CIM Indication Subscriptions. General System Configuration > Management Agent Configuration > CIM Indication Subscriptions"
