@@ -330,7 +330,8 @@ If(!$NTPCSVFILEGET)
 	$NTPNAME = @()
 	$NTPTEMPLIST = "" | Select NTP, Site
 	$NTPTEMPLIST.NTP = Read-Host "Please provide a list of NTP servers for site $SITE in comma seperated format
-	Example pool1.ntp.org, pool2.ntp.org"
+	Example pool1.ntp.org, pool2.ntp.org
+	Note: Please attempt to provide a minimum of 5 NTP Sources, as this is best practice per support.ntp.org, section 5.3.4, https://support.ntp.org/bin/view/Support/SelectingOffsiteNTPServers"
 	$NTPTEMPLIST.Site = $SITE
 	Write-Host "NTP Site Selected is"($NTPTEMPLIST.Site)
 	$NTPNAME += $NTPTEMPLIST
