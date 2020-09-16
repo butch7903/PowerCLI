@@ -2,8 +2,8 @@
     .NOTES
 	===========================================================================
 	Created by:		Russell Hamker
-	Date:			August 3, 2020
-	Version:		1.10
+	Date:			September 9, 2020
+	Version:		1.2.3
 	Twitter:		@butch7903
 	GitHub:			https://github.com/butch7903
 	===========================================================================
@@ -695,9 +695,21 @@ foreach($oC in $VMHOST)
 Write-Host " "   
 $choice = Read-Host "Which VMHost do you wish to export the Host Profile from?"
 $VMHOST = get-vmhost $VMHOST[$choice]
-Write-Host "You have selected Cluster $CLUSTER on vCenter $VCSA"
+Write-Host "You have selected 
+VMHost $VMHOST
+Cluster $CLUSTER 
+vCenter $VCSA"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+
+##Enable CIM Service If it is not running. This is needed to properly monitor local storage on a VMHost
+$CIMSERVICESTATUS = (Get-VMHost $VMHOST | Get-VMHostService | Where {$_.Key -eq 'sfcbd-watchdog'}).Running 	#CIM Server - Hardware Monitoring Service
+If($CIMSERVICESTATUS -eq $false)
+{
+	Write-Host "CIM Server Service is not running on selected VMHost $VMHOST. Turning on CIM Server Service."
+	Get-VMHost $VMHOST | Foreach {Start-VMHostService -HostService ($_ | Get-VMHostService | Where {$_.Key -eq 'sfcbd-watchdog'})}
+	Get-VMHost $VMHOST | Foreach {Set-VMHostService -HostService ($_ | Get-VMHostService | where {$_.key -eq 'sfcbd-watchdog'}) -policy On}
+}
 
 ##Remove Host Profile with Cluster Name if it exists
 CLS
@@ -1029,7 +1041,7 @@ Write-Host "Adding Best Practices Configuration"
 
 ##Set CEIP Opt In to Yes
 #key-vim-profile-host-OptionProfile-UserVars_HostClientCEIPOptIn
-$CEIPOPTINSTATUS = (($spec.ApplyProfile.Option | where {$_.Key -eq 'key-vim-profile-host-OptionProfile-UserVars_HostClientCEIPOptIn'}).Policy | Where {$_.Id -eq 'ConfigOptionPolicy'}).PolicyOption | Where {$_.Id -eq 'FixedConfigOption'}
+$CEIPOPTINSTATUS = ($spec.ApplyProfile.Option | where {$_.Key -eq 'key-vim-profile-host-OptionProfile-UserVars_HostClientCEIPOptIn'})
 If($CEIPOPTINSTATUS)
 {
 	Write-Host "CEIP Settings verified. Enforcing Host Client CEIP Opt In to yes"
@@ -1039,10 +1051,33 @@ If($CEIPOPTINSTATUS)
 	Write-Host "Completed enforcing Host Client CEIP Opt In to yes"
 }Else{
 	Write-Host "Host Client CEIP Opt In not found. Adding configuration"
-	(($spec.ApplyProfile.Option | where {$_.Key -eq 'key-vim-profile-host-OptionProfile-UserVars_HostClientCEIPOptIn'}).Policy | Where {$_.Id -eq 'ConfigOptionPolicy'}).PolicyOption.Id = 'FixedConfigOption'
-	(((($spec.ApplyProfile.Option | where {$_.Key -eq 'key-vim-profile-host-OptionProfile-UserVars_HostClientCEIPOptIn'}).Policy | Where {$_.Id -eq 'ConfigOptionPolicy'}).PolicyOption | Where {$_.Id -eq 'FixedConfigOption'}).Parameter |Where {$_.Key -eq 'value'}).Value = '1' #0 for ask, 1 for yes, 2 for no
-	Write-Hpst "Setting Host Client CEIP Opt In as a Favorite"
-	($spec.ApplyProfile.Option | where {$_.Key -eq 'key-vim-profile-host-OptionProfile-UserVars_HostClientCEIPOptIn'}).Favorite = $True
+	$configOption = $null
+	$configOption = New-Object VMware.Vim.OptionProfile
+	$configOption[0].Key = 'key-vim-profile-host-OptionProfile-UserVars_HostClientCEIPOptIn'
+	$configOption[0].ProfileTypeName = 'OptionProfile'
+	$configOption[0].ProfileVersion = '6.7.0'
+	$configOption[0].Enabled = $true
+	$configOption[0].Favorite = $true
+	$configOption[0].Policy = New-Object VMware.Vim.ProfilePolicy
+	$configOption[0].Policy[0].Id = 'ConfigOptionPolicy'
+	$configOption[0].Policy[0].PolicyOption = New-Object VMware.Vim.PolicyOption
+	$configOption[0].Policy[0].PolicyOption.Id = 'FixedConfigOption'
+	$ParameterArray = @()
+	$Parameter = $null
+	$Parameter = New-Object VMware.Vim.KeyAnyValue
+	$Parameter.Key = 'key'
+	$Parameter.Value = 'UserVars.HostClientCEIPOptIn'
+	$ParameterArray += $Parameter
+	$Parameter = $null
+	$Parameter = New-Object VMware.Vim.KeyAnyValue
+	$Parameter.Key = 'value'
+	$Parameter.Value = '1'
+	$ParameterArray += $Parameter
+	$configOption[0].Policy[0].PolicyOption.Parameter = $ParameterArray
+	##Add Options to SPEC
+	Write-Host "Adding Host Client CEIP Option Configuration to SPEC"
+	$spec.ApplyProfile.Option +=@($configOption)
+	Write-Host "Completed adding CEIP Option Configuration"
 }
 
 ##Set Scratch Disk Requirement
@@ -1201,7 +1236,7 @@ If($GetUseATSForHBOnVMFS5Spec.count -lt 1)
 Write-Host "Enforcing VPXA Log settings. Advanced Configuration Settings > vCenter Agent (vpxa) Configurations"
 (((((($spec.ApplyProfile.Property | where {$_.PropertyName -eq "vpxaConfig_vpxaConfig_VpxaConfigProfile"}).Profile) |where {$_.ProfileTypeName -eq "vpxaConfig_vpxaConfig_VpxaConfigProfile"}).Policy `
 | Where {$_.Id -eq "vpxaConfig.vpxaConfig.VpxaConfigProfilePolicy"}).PolicyOption | `
-Where {$_.Id -eq "vpxaConfig.vpxaConfig.VpxaConfigProfilePolicyOption"}).Parameter |Where {$_.Key -eq "logLevel"}).Value = "info"
+Where {$_.Id -eq "vpxaConfig.vpxaConfig.VpxaConfigProfilePolicyOption"}).Parameter |Where {$_.Key -eq "logLevel"}).Value = "verbose" #https://kb.vmware.com/s/article/1004795 Default for 5.x-6.x is verbose
 Write-Host "Setting VPXA Log settings as Favorite"
 (($spec.ApplyProfile.Property | where {$_.PropertyName -eq "vpxaConfig_vpxaConfig_VpxaConfigProfile"}).Profile | where {$_.ProfileTypeName -eq "vpxaConfig_vpxaConfig_VpxaConfigProfile"}).Favorite = $true
 Write-Host "VPXA Logging set to :"
@@ -1216,7 +1251,7 @@ Write-Host "Enforcing Graphings Configuration. Advanced Configuration Settings >
 ##Enforce Host Profile Logging Level
 Write-Host "Enforcing Host Profile Logging Level. Advanced Configuration Settings > Host Profile Log Configuration > Host Profile Log Configuration"
 ((($spec.ApplyProfile.Property | where {$_.PropertyName -eq "hostprofileLogging_hpLogging_HPLoggingProfile"}).Profile | Where {$_.ProfileTypeName -eq "hostprofileLogging_hpLogging_HPLoggingProfile"}).Policy.PolicyOption.Parameter | Where {$_.Key -eq "traceEnabled"}).Value = $false
-((($spec.ApplyProfile.Property | where {$_.PropertyName -eq "hostprofileLogging_hpLogging_HPLoggingProfile"}).Profile | Where {$_.ProfileTypeName -eq "hostprofileLogging_hpLogging_HPLoggingProfile"}).Policy.PolicyOption.Parameter | Where {$_.Key -eq "logLevel"}).Value = "INFO"
+((($spec.ApplyProfile.Property | where {$_.PropertyName -eq "hostprofileLogging_hpLogging_HPLoggingProfile"}).Profile | Where {$_.ProfileTypeName -eq "hostprofileLogging_hpLogging_HPLoggingProfile"}).Policy.PolicyOption.Parameter | Where {$_.Key -eq "logLevel"}).Value = "INFO" #Default is INFO. Change to DEBUG for higher logging
 (($spec.ApplyProfile.Property | where {$_.PropertyName -eq "hostprofileLogging_hpLogging_HPLoggingProfile"}).Profile | Where {$_.ProfileTypeName -eq "hostprofileLogging_hpLogging_HPLoggingProfile"}).Favorite = $true
 
 ##Enforce Power System Configuration
@@ -1381,6 +1416,7 @@ IF($FIPSARRAY)
 	($spec.ApplyProfile.Property | Where {$_.PropertyName -eq 'security_FipsProfile_FipsProfile'}).Profile = $PROFILES
 }
 
+
 ##Set Service Configurations
 #Set Service Array for Service Configuration
 #Based on Default Settings except: ntpd,sfcbd-watchdog https://docs.vmware.com/en/VMware-vSphere/6.7/com.vmware.vsphere.security.doc/GUID-37AB1F95-DDFD-4A5D-BD49-3249386FFADE.html
@@ -1416,7 +1452,7 @@ $SVCSTEMP.StartupPolicy = 'Off' #Set to On, Off, or Automatic
 $SVCSTEMP.Favorite = $False
 $SVCSARRAY += $SVCSTEMP
 $SVCSTEMP = "" | Select Name, StartupPolicy, Favorite
-$SVCSTEMP.Name = 'sfcbd-watchdog'	#CIM Agent - Hardware Monitor
+$SVCSTEMP.Name = 'sfcbd-watchdog'	#CIM Server - Hardware Monitoring Service
 $SVCSTEMP.StartupPolicy = 'On' #Set to On, Off, or Automatic
 $SVCSTEMP.Favorite = $False
 $SVCSARRAY += $SVCSTEMP
@@ -1466,10 +1502,12 @@ IF($SVCSARRAY)
 		$PROFILE.Policy[1].PolicyOption = New-Object VMware.Vim.PolicyOption
 		If($SVCS.StartupPolicy -eq 'On')
 		{
+			Write-Host "Setting $SVCSNAME service to Start With Host"
 			$PROFILE.Policy[1].PolicyOption[0].Id = 'service.serviceProfile.StartupPolicyOn'
 		}
 		If($SVCS.StartupPolicy -eq 'Off')
 		{
+			Write-Host "Setting $SVCSNAME service to Start and Stop Manually"
 			$PROFILE.Policy[1].PolicyOption[0].Id = 'service.serviceProfile.StartupPolicyOff'
 			$TEMPARRAY = @()
 			$TEMP = New-Object VMware.Vim.KeyAnyValue
@@ -1481,6 +1519,7 @@ IF($SVCSARRAY)
 		}
 		If($SVCS.StartupPolicy -eq 'Automatic')
 		{
+			Write-Host "Setting $SVCSNAME service to Start and Stop with Port Usage"
 			$PROFILE.Policy[1].PolicyOption[0].Id = 'service.serviceProfile.StartupPolicyAutomatic'
 			$TEMPARRAY = @()
 			$TEMP = New-Object VMware.Vim.KeyAnyValue
@@ -1628,10 +1667,84 @@ $PARMARRAY += $TEMPPARM
 ($spec.ApplyProfile.Property | Where {$_.PropertyName -eq "snmp_GenericAgentProfiles_GenericAgentConfigProfile"}).Profile.Property.Profile.Policy.PolicyOption.Parameter = $PARMARRAY
 Write-Host "Completed clearing any SNMP configurations"
 
-##Enforce Clearing CIM Indication Subscriptions
-Write-Host "Removing any CIM Indication Subscriptions. General System Configuration > Management Agent Configuration > CIM Indication Subscriptions"
+##NULL/Clear out CIM Profile
+Write-Host "Removing any CIM Indication Subscriptions. General System Configuration > Management Agent Configuration > CIM Indication Subscriptions"											   
 (($spec.ApplyProfile.Property | Where {$_.PropertyName -eq "cimIndications_cimIndicationsProfile_CimIndications"}).Profile).Property.Profile = $null
-Write-Host "Completed removing any CIM Indication Subscriptions"
+
+##Check for CIM Profile
+$CIMPROFILE = (($spec.ApplyProfile.Property | Where {$_.PropertyName -eq "cimIndications_cimIndicationsProfile_CimIndications"}).Profile).Property.Profile
+If(!$CIMPROFILE)
+{
+	Write-Host "CIM Profile not Found. Adding Profile to SPEC"
+	$PROFILE = New-Object VMware.Vim.ProfileApplyProfileElement
+	$PROFILE[0].Key = "54ec12f488aedfe9f59ee9b240fdbb046665f91fc88fbeca81de2b5ecdaa6e51" 
+	$PROFILE[0].Enabled = $True
+	$PROFILE[0].ProfileTypeName = "cimIndications_cimxmlIndications_CimXmlIndicationsProfile"
+	$PROFILE[0].ProfileVersion = "6.7.0"
+	$PROFILE[0].Favorite = $True
+	$PROFILE[0].Policy = New-Object VMware.Vim.ProfilePolicy
+	$PROFILE[0].Policy[0].Id = "cimIndications.cimxmlIndications.CimXmlIndicationsProfilePolicy"
+	$PROFILE[0].Policy[0].PolicyOption = New-Object VMware.Vim.PolicyOption
+	$PROFILE[0].Policy[0].PolicyOption[0].Id = "cimIndications.cimxmlIndications.CimXmlIndicationsProfilePolicyOption"	
+	$TEMPARRAY = @()
+	$TEMP = New-Object VMware.Vim.KeyAnyValue
+	$TEMP.Key = "listenerClass"
+	$TEMP.Value = "CIM_IndicationHandlerCIMXML"
+	$TEMPARRAY += $TEMP
+	$TEMP = New-Object VMware.Vim.KeyAnyValue
+	$TEMP.Key = "queryLanguage"
+	$TEMP.Value = "WQL"
+	$TEMPARRAY += $TEMP
+	$TEMP = New-Object VMware.Vim.KeyAnyValue
+	$TEMP.Key = "filterSystemCreationClassName"
+	$TEMP.Value = "CIM_ComputerSystem"
+	$TEMPARRAY += $TEMP
+	$TEMP = New-Object VMware.Vim.KeyAnyValue
+	$TEMP.Key = "listenerName"
+	$TEMP.Value = "smx"
+	$TEMPARRAY += $TEMP
+	$TEMP = New-Object VMware.Vim.KeyAnyValue
+	$TEMP.Key = "filterSystemName"
+	$TEMP.Value = "localhost"
+	$TEMPARRAY += $TEMP
+	$TEMP = New-Object VMware.Vim.KeyAnyValue
+	$TEMP.Key = "sourceNamespaces"
+	$T = @()
+	[string[]]$T += 'root/hpq'
+	$TEMP.Value = $T
+	$TEMPARRAY += $TEMP
+	$TEMP = New-Object VMware.Vim.KeyAnyValue
+	$TEMP.Key = "sourceNamespace"
+	$TEMP.Value = "root/hpq"
+	$TEMPARRAY += $TEMP
+	$TEMP = New-Object VMware.Vim.KeyAnyValue
+	$TEMP.Key = "filterName"
+	$TEMP.Value = "smx"
+	$TEMPARRAY += $TEMP
+	$TEMP = New-Object VMware.Vim.KeyAnyValue
+	$TEMP.Key = "listenerSystemName"
+	$TEMP.Value = "localhost"
+	$TEMPARRAY += $TEMP
+	$TEMP = New-Object VMware.Vim.KeyAnyValue
+	$TEMP.Key = "filterClass"
+	$TEMP.Value = "CIM_IndicationFilter"
+	$TEMPARRAY += $TEMP
+	$TEMP = New-Object VMware.Vim.KeyAnyValue
+	$TEMP.Key = "listenerDestination"
+	$TEMP.Value = "http://localhost"
+	$TEMPARRAY += $TEMP
+	$TEMP = New-Object VMware.Vim.KeyAnyValue
+	$TEMP.Key = "listenerSystemCreationClassName"
+	$TEMP.Value = "CIM_ComputerSystem"
+	$TEMPARRAY += $TEMP
+	$TEMP = New-Object VMware.Vim.KeyAnyValue
+	$TEMP.Key = "query"
+	$TEMP.Value = "SELECT * FROM CIM_ProcessIndication"
+	$TEMPARRAY += $TEMP
+	$PROFILE[0].Policy[0].PolicyOption[0].Parameter = $TEMPARRAY
+	
+	(($spec.ApplyProfile.Property | Where {$_.PropertyName -eq "cimIndications_cimIndicationsProfile_CimIndications"}).Profile).Property.Profile = $PROFILE[0]
+}
 
 #Functional. Opened VMware Support case to troubleshoot. Support Case # 20130695506/20140259207 
 Write-Host "Setting Host Power System settings. Power System Configuration > Power System"
