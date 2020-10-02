@@ -2,8 +2,8 @@
     .NOTES
 	===========================================================================
 	Created by:		Russell Hamker
-	Date:			September 9, 2020
-	Version:		1.2.3
+	Date:			September 24, 2020
+	Version:		1.2.4
 	Twitter:		@butch7903
 	GitHub:			https://github.com/butch7903
 	===========================================================================
@@ -1417,7 +1417,6 @@ IF($FIPSARRAY)
 	($spec.ApplyProfile.Property | Where {$_.PropertyName -eq 'security_FipsProfile_FipsProfile'}).Profile = $PROFILES
 }
 
-
 ##Set Service Configurations
 #Set Service Array for Service Configuration
 #Based on Default Settings except: ntpd,sfcbd-watchdog https://docs.vmware.com/en/VMware-vSphere/6.7/com.vmware.vsphere.security.doc/GUID-37AB1F95-DDFD-4A5D-BD49-3249386FFADE.html
@@ -1758,6 +1757,52 @@ Low Power --------  powerSystem.powerSystem.LowCpuPolicyOption
 Custome   --------  powerSystem.powerSystem.CustomCpuPolicyOption
 Explicit option --- NoDefaultOption
 
+#>
+
+##Set USB Quirks
+#Required for HPE Hardware https://kb.vmware.com/s/article/80416
+Write-Host "Checking if USB Quirks is set as a requirement under Advanced Configuration Settings > Advanced Options > USB.Quirks"
+$USBQUIRKSTATUS = $spec.ApplyProfile.Option | where {$_.Key -eq "key-vim-profile-host-OptionProfile-USB_quirks"}
+IF($USBQUIRKSTATUS)
+{
+	Write-Host "USB Quirks Configuration already exists :)"
+	Write-Host "Setting USB Quirks as Favorite"
+	($spec.ApplyProfile.Option | where {$_.Key -eq "key-vim-profile-host-OptionProfile-USB_quirks"}).Favorite = $true
+	($spec.ApplyProfile.Option | where {$_.Key -eq "key-vim-profile-host-OptionProfile-USB_quirks"}).Favorite
+	Write-Host "Completed Updating USB Quirks Configuration"
+}ELSE{
+	Write-Host "USB Quirks Configuration not found."
+	Write-Host "Adding USB Quirks to Configuration"
+	$configOption = $null
+	$configOption = New-Object VMware.Vim.OptionProfile
+	$configOption[0].Key = 'key-vim-profile-host-OptionProfile-USB_quirks'
+	$configOption[0].ProfileTypeName = 'OptionProfile'
+	$configOption[0].ProfileVersion = '6.7.0'
+	$configOption[0].Enabled = $true
+	$configOption[0].Favorite = $true
+	$configOption[0].Policy = New-Object VMware.Vim.ProfilePolicy
+	$configOption[0].Policy[0].Id = 'ConfigOptionPolicy'
+	$configOption[0].Policy[0].PolicyOption = New-Object VMware.Vim.PolicyOption
+	$configOption[0].Policy[0].PolicyOption.Id = 'FixedConfigOption'
+	$configOption[0].Policy[0].PolicyOption.Parameter = New-Object VMware.Vim.KeyAnyValue[] (2)
+	$configOption[0].Policy[0].PolicyOption.Parameter[0] = New-Object VMware.Vim.KeyAnyValue
+	$configOption[0].Policy[0].PolicyOption.Parameter[0].Value = 'USB.quirks'
+	$configOption[0].Policy[0].PolicyOption.Parameter[0].Key = 'key'
+	$configOption[0].Policy[0].PolicyOption.Parameter[1] = New-Object VMware.Vim.KeyAnyValue
+	$configOption[0].Policy[0].PolicyOption.Parameter[1].Value = "::::TEST:0x0bda:0x0329:0:0xffff:UQ_MSC_BAD_READ_CAPACITY_16"
+	$configOption[0].Policy[0].PolicyOption.Parameter[1].Key = 'value'
+	##Add Options to SPEC
+	Write-Host "Adding USB Quirks Configuration to SPEC"
+	$spec.ApplyProfile.Option +=@($configOption)
+	Write-Host "Completed adding USB Quirks to Configuration"
+}
+
+<#
+##Disable IPv6 on VMHost Management
+Write-Host "Enforcing Disablement of IPv6 for Hosts"
+Write-Host "Disabling IPv6 for Host Management under -> General System Settings > Kernel Module Configuration > Kernel Module Configuration > Ketnel Module > tcpip4 > Kernel Module Parameter > ipv6"
+((($spec.ApplyProfile.Property.Profile | where {$_.ProfileTypeName -eq 'kernelModule_moduleProfile_KernelModuleConfigProfile'}).Property.Profile | Where {$_.Key -eq 'KernelModuleProfile-tcpip4-key'}).Property.Profile | where {$_.Key -eq 'KernelModuleParamProfile-ipv6-key'}).Favorite = $true
+(((($spec.ApplyProfile.Property.Profile | where {$_.ProfileTypeName -eq 'kernelModule_moduleProfile_KernelModuleConfigProfile'}).Property.Profile | Where {$_.Key -eq 'KernelModuleProfile-tcpip4-key'}).Property.Profile | where {$_.Key -eq 'KernelModuleParamProfile-ipv6-key'}).Policy.PolicyOption[0].Parameter | Where {$_.Key -eq 'parameterValue'}).Value = '0' #0 Disables IPv6, 1 Enables IPv6
 #>
 
 Write-Host "Completed adding Best Practices Configuration"
