@@ -15,7 +15,7 @@
 
 	.DESCRIPTION
 		Use this script to create a Host profile for a Cluster of VMHosts. The only
-		change this script makes to a host itself is to apply specific Power Policy
+		change this script makes to a host itself is to enable the CIM Service on a VMhost
 		configuration prior to configuring the Host Profile for optimal config. After
 		the script completes it will apply the Host Profile to the cluster.
 	.NOTES
