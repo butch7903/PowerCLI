@@ -28,7 +28,47 @@ $pwd = pwd
 $STARTTIME = Get-Date -format "MMM-dd-yyyy HH-mm-ss"
 $STARTTIMESW = [Diagnostics.Stopwatch]::StartNew()
 
-Import-Module VMware.PowerCLI
+##Check if Modules are installed, if so load them, else install them
+if (Get-InstalledModule -Name VMware.PowerCLI -MinimumVersion 11.4) {
+	Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+	Write-Host "PowerShell Module VMware PowerCLI required minimum version was found previously installed"
+	Write-Host "Importing PowerShell Module VMware PowerCLI"
+	Import-Module -Name VMware.PowerCLI
+	Write-Host "Importing PowerShell Module VMware PowerCLI Completed"
+	Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+	#CLEAR
+} else {
+	Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+	Write-Host "PowerShell Module VMware PowerCLI does not exist"
+	Write-Host "Setting Micrsoft PowerShell Gallery as a Trusted Repository"
+	Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+	Write-Host "Verifying that NuGet is at minimum version 2.8.5.201 to proceed with update"
+	Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Confirm:$false
+	Write-Host "Uninstalling any older versions of the VMware PowerCLI Module"
+	Get-Module VMware.PowerCLI | Uninstall-Module -Force
+	Write-Host "Installing Newest version of VMware PowerCLI PowerShell Module"
+	Install-Module -Name VMware.PowerCLI -Scope AllUsers
+	Write-Host "Creating a Desktop shortcut to the VMware PowerCLI Module"
+	$AppLocation = "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+	$Arguments = '-noe -c "Import-Module VMware.PowerCLI"'
+	$WshShell = New-Object -ComObject WScript.Shell
+	$Shortcut = $WshShell.CreateShortcut("$Home\Desktop\VMware PowerCLI.lnk")
+	$Shortcut.TargetPath = $AppLocation
+	$Shortcut.Arguments = $Arguments
+	$ShortCut.Hotkey = "CTRL+SHIFT+V"
+	$Shortcut.IconLocation = "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe,1"
+	$Shortcut.Description ="Launch VMware PowerCLI"
+	$Shortcut.WorkingDirectory ="C:\"
+	$Shortcut.Save()
+	Write-Host "Shortcut Created"
+	Write-Host "You may use the CTRL+SHIFT+V method to open VMware PowerCLI"
+	Write-Host "Importing PowerShell Module VMware PowerCLI"
+	Import-Module -Name VMware.PowerCLI
+	Write-Host "PowerShell Module VMware PowerCLI Loaded"
+	Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+	#Clear
+}
+
 
 #Type in VCSA Name
 $VCSA = read-host "Please Provide VCSA FQDN"
