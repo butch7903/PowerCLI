@@ -62,8 +62,6 @@ if (Get-InstalledModule -Name VMware.PowerCLI -MinimumVersion 11.4) {
 	#Clear
 }
 
-Import-Module VMware.PowerCLI
-
 ##Get Current Path
 $pwd = pwd
 
