@@ -2,8 +2,8 @@
     .NOTES
 	===========================================================================
 	Created by:		Russell Hamker
-	Date:			November 25, 2020
-	Version:		1.0
+	Date:			November 30, 2020
+	Version:		1.1
 	Twitter:		@butch7903
 	GitHub:			https://github.com/butch7903
 	===========================================================================
@@ -61,6 +61,8 @@ if (Get-InstalledModule -Name VMware.PowerCLI -MinimumVersion 11.4) {
 	Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 	#Clear
 }
+
+Import-Module VMware.PowerCLI
 
 ##Get Current Path
 $pwd = pwd
@@ -157,43 +159,48 @@ Write-Host "You have selected Cluster $CLUSTER on vCenter $VCSA"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 
-
 #Get VMHost List
-$VMHOSTLIST = $Cluster | Get-VMHost 
+$VMHOSTLIST = $Cluster | Get-VMHost | Sort Name
 
-$DETAILLIST = @()
-ForEach($VMHOST in $VMHOSTLIST)
-{
-	$TEMPLIST = "" | Select VMHOST, BootBankSizeMB, BootBankFreeMB, BootBankUUID
-	
-	#ESXCLI
-	$esxcli = Get-EsxCli -VMHost $VMHOST -V2
+function Get-EsxBootBank {
+	#Author: Russell Hamker
+	Param (
+		$ObjectList
+	)
+	$DETAILLIST = @()
+	ForEach($VMHOST in $ObjectList)
+	{
+		$TEMPLIST = "" | Select VMHOST, BootBankSizeMB, BootBankFreeMB, BootBankUUID
 		
-	#Get Boot Details
-	$BOOTDETAILS = $esxcli.system.boot.device.get.Invoke()
+		#ESXCLI
+		$esxcli = Get-EsxCli -VMHost $VMHOST -V2
+			
+		#Get Boot Details
+		$BOOTDETAILS = $esxcli.system.boot.device.get.Invoke()
 
-	#Get Boot Bank Storage Details
-	$BOOTBANK = $esxcli.storage.filesystem.list.invoke() |Where {$_.UUID -eq $BOOTDETAILS.BootFilesystemUUID}
-	
-	#Convert Boot Bank Capacity to a Number (instead of a System String)
-	$BOOTBANKSIZE = $BOOTBANK.Size -as [Decimal] #[Decimal]::Parse($BOOTBANK.Size)
-	$BOOTBANKFREE = $BOOTBANK.Free -as [Decimal] #[Decimal]::Parse($BOOTBANK.Free)
+		#Get Boot Bank Storage Details
+		$BOOTBANK = $esxcli.storage.filesystem.list.invoke() |Where {$_.UUID -eq $BOOTDETAILS.BootFilesystemUUID}
+		
+		#Convert Boot Bank Capacity to a Number (instead of a System String)
+		$BOOTBANKSIZE = $BOOTBANK.Size -as [Decimal]
+		$BOOTBANKFREE = $BOOTBANK.Free -as [Decimal]
 
-	#Convert Boot Bank #s to MB
-	$BOOTBANKSIZEMB = $BOOTBANKSIZE / 1MB
-	$BOOTBANKFREEMB = $BOOTBANKFREE / 1MB
-	#Write-Host "Bootbank Size is $BOOTBANKSIZEMB MB"
-	#Write-Host "Bootbank Free is $BOOTBANKFREEMB MB"
-	
-	$TEMPLIST.VMHOST = $VMHOST.NAME
-	$TEMPLIST.BootBankSizeMB = $BOOTBANKSIZEMB
-	$TEMPLIST.BootBankFreeMB = $BOOTBANKFREEMB
-	$TEMPLIST.BootBankUUID = $BOOTDETAILS.BootFilesystemUUID
-	$DETAILLIST += $TEMPLIST
+		#Convert Boot Bank #s to MB
+		$BOOTBANKSIZEMB = $BOOTBANKSIZE / 1MB
+		$BOOTBANKFREEMB = $BOOTBANKFREE / 1MB
+		
+		$TEMPLIST.VMHOST = $VMHOST.NAME -as [String]
+		$TEMPLIST.BootBankSizeMB = $BOOTBANKSIZEMB -as [Decimal]
+		$TEMPLIST.BootBankFreeMB = $BOOTBANKFREEMB -as [Decimal]
+		$TEMPLIST.BootBankUUID = $BOOTDETAILS.BootFilesystemUUID -as [String]
+		$DETAILLIST += $TEMPLIST
+	}
+	Write-Output $DETAILLIST
 }
-Write-Output $DETAILLIST | ft
-#Write-Host $DETAILLIST
 
+Write-Host "Getting Boot Bank Info"
+$R = Get-EsxBootBank $VMHOSTLIST
+Write-Output $R | Format-Table
 
 ##Document Script Total Run time
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
