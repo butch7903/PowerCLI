@@ -2,8 +2,8 @@
     .NOTES
 	===========================================================================
 	Created by:		Russell Hamker
-	Date:			December 23,2020
-	Version:		2.0
+	Date:			January 6,2021
+	Version:		2.1
 	Twitter:		@butch7903
 	GitHub:			https://github.com/butch7903
 	===========================================================================
@@ -123,6 +123,8 @@ Write-Host "Adding Software Depot/Offline Bundle:
 $ZIP"
 $MANUDEPOT = Add-EsxSoftwareDepot $ZIP
 $ESXIMAGEPROFILE = Get-EsxImageProfile |select * #Gets details of what is in the $ZIP file
+Write-Host "Listing Manufacturer's ESXi Image Profile:"
+$ESXIMAGEPROFILE
 $ORIGINALVIBLIST = Get-EsxSoftwarePackage | Sort Name
 Write-Host "VIB List for Manufacturer ESX Image Profile will include:"
 Write-Output $ORIGINALVIBLIST | ft
@@ -227,12 +229,18 @@ Write-Host "--------------------------------------------------------------------
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "Creating new ESX Image Profile"
+If($ESXIMAGEPROFILE.Description)
+{
+	$ESXIMAGEPROFILEDescription	= $ESXIMAGEPROFILE.Description
+}Else{
+	$ESXIMAGEPROFILEDescription	= "$ESXIMAGEPROFILE.vendor Image Based On $ESXIMAGEPROFILE.Name"
+}
 If($VIBLISTALTERED)
 {
 	Write-Host "Creating New ESX Image Profile Based on the Altered VIB List (Unused VIBs were removed)"
 	$NewProfileName = ($ESXIMAGEPROFILE.Name + "_custom")
 	$NEWESXIMAGEPROFILE = New-EsxImageProfile -NewProfile $NewProfileName -SoftwarePackage $VIBLISTALTERED `
-    -Vendor $ESXIMAGEPROFILE.Vendor  -AcceptanceLevel $ESXIMAGEPROFILE.AcceptanceLevel -Description $ESXIMAGEPROFILE.Description `
+    -Vendor $ESXIMAGEPROFILE.Vendor  -AcceptanceLevel $ESXIMAGEPROFILE.AcceptanceLevel -Description $ESXIMAGEPROFILEDescription `
     -ErrorAction Stop -ErrorVariable CreationError
 	
 	$ESXIMAGEVERSION = ($VIBLISTALTERED | Where {$_.Name -like "esx-base"}).Version
@@ -240,7 +248,7 @@ If($VIBLISTALTERED)
 	Write-Host "Creating New ESX Image Profile Based on the Unique/Newest VIB List (No unused VIBs were removed)"
 	$NewProfileName = ($ESXIMAGEPROFILE.Name + "_custom")
 	$NEWESXIMAGEPROFILE = New-EsxImageProfile -NewProfile $NewProfileName -SoftwarePackage $VIBLIST `
-    -Vendor $ESXIMAGEPROFILE.Vendor  -AcceptanceLevel $ESXIMAGEPROFILE.AcceptanceLevel -Description $ESXIMAGEPROFILE.Description `
+    -Vendor $ESXIMAGEPROFILE.Vendor  -AcceptanceLevel $ESXIMAGEPROFILE.AcceptanceLevel -Description $ESXIMAGEPROFILEDescription `
     -ErrorAction Stop -ErrorVariable CreationError
 	
 	$ESXIMAGEVERSION =  ($VIBLIST  | Where {$_.Name -like "esx-base"}).Version
