@@ -112,13 +112,13 @@ $Answers.SubVersion = $SubVersion
 $vCenter = Read-Host "Please input the FQDN or IP of your VCSA
 Example: hamvc01.hamker.local"
 $Answers.vCenter = $vCenter
+$ALARMNAME = Read-Host "Please Provide the name of your HA Alarm
+Example: Host HA Failure"
+$Answers.AlarmName = $ALARMNAME
 $COMMENTS = Read-Host "Input Comments.
 Example: This script was updated on xx per xx
 (OPTIONAL) (Leave blank if you do not wish to use this)
 "
-$ALARMNAME = Read-Host "Please Provide the name of your HA Alarm
-Example: Host HA Failure"
-$Answers.AlarmName
 $Answers.Comments = $COMMENTS
 $TIMEZONES = @("Central Standard Time","Eastern Standard Time","Mountain Standard Time","Pacific Standard Time","UTC")
 If($TIMEZONES.Count -gt 1)
