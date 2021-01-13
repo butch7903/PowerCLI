@@ -239,7 +239,7 @@ If($VIBLISTALTERED)
 {
 	Write-Host "Creating New ESX Image Profile Based on the Altered VIB List (Unused VIBs were removed)"
 	$EDITION = Get-Date -format "ddMMyyyy_HHmm"
-	$NewProfileName = ($ESXIMAGEPROFILE.Name + "_custom" + $EDITION)
+	$NewProfileName = ($ESXIMAGEPROFILE.Name + "_custom_" + $EDITION)
 	$NEWESXIMAGEPROFILE = New-EsxImageProfile -NewProfile $NewProfileName -SoftwarePackage $VIBLISTALTERED `
     -Vendor $ESXIMAGEPROFILE.Vendor  -AcceptanceLevel $ESXIMAGEPROFILE.AcceptanceLevel -Description $ESXIMAGEPROFILEDescription `
     -ErrorAction Stop -ErrorVariable CreationError
@@ -248,7 +248,7 @@ If($VIBLISTALTERED)
 }Else{
 	Write-Host "Creating New ESX Image Profile Based on the Unique/Newest VIB List (No unused VIBs were removed)"
 	$EDITION = Get-Date -format "ddMMyyyy_HHmm"
-	$NewProfileName = ($ESXIMAGEPROFILE.Name + "_custom" + $EDITION)
+	$NewProfileName = ($ESXIMAGEPROFILE.Name + "_custom_" + $EDITION)
 	$NEWESXIMAGEPROFILE = New-EsxImageProfile -NewProfile $NewProfileName -SoftwarePackage $VIBLIST `
     -Vendor $ESXIMAGEPROFILE.Vendor  -AcceptanceLevel $ESXIMAGEPROFILE.AcceptanceLevel -Description $ESXIMAGEPROFILEDescription `
     -ErrorAction Stop -ErrorVariable CreationError
