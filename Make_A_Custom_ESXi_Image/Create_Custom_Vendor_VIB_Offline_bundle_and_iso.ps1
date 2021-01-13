@@ -2,8 +2,8 @@
     .NOTES
 	===========================================================================
 	Created by:		Russell Hamker
-	Date:			January 6,2021
-	Version:		2.1
+	Date:			January 12,2021
+	Version:		2.2
 	Twitter:		@butch7903
 	GitHub:			https://github.com/butch7903
 	===========================================================================
@@ -238,7 +238,8 @@ If($ESXIMAGEPROFILE.Description)
 If($VIBLISTALTERED)
 {
 	Write-Host "Creating New ESX Image Profile Based on the Altered VIB List (Unused VIBs were removed)"
-	$NewProfileName = ($ESXIMAGEPROFILE.Name + "_custom")
+	$EDITION = Get-Date -format "ddMMyyyy_HHmm"
+	$NewProfileName = ($ESXIMAGEPROFILE.Name + "_custom" + $EDITION)
 	$NEWESXIMAGEPROFILE = New-EsxImageProfile -NewProfile $NewProfileName -SoftwarePackage $VIBLISTALTERED `
     -Vendor $ESXIMAGEPROFILE.Vendor  -AcceptanceLevel $ESXIMAGEPROFILE.AcceptanceLevel -Description $ESXIMAGEPROFILEDescription `
     -ErrorAction Stop -ErrorVariable CreationError
@@ -246,7 +247,8 @@ If($VIBLISTALTERED)
 	$ESXIMAGEVERSION = ($VIBLISTALTERED | Where {$_.Name -like "esx-base"}).Version
 }Else{
 	Write-Host "Creating New ESX Image Profile Based on the Unique/Newest VIB List (No unused VIBs were removed)"
-	$NewProfileName = ($ESXIMAGEPROFILE.Name + "_custom")
+	$EDITION = Get-Date -format "ddMMyyyy_HHmm"
+	$NewProfileName = ($ESXIMAGEPROFILE.Name + "_custom" + $EDITION)
 	$NEWESXIMAGEPROFILE = New-EsxImageProfile -NewProfile $NewProfileName -SoftwarePackage $VIBLIST `
     -Vendor $ESXIMAGEPROFILE.Vendor  -AcceptanceLevel $ESXIMAGEPROFILE.AcceptanceLevel -Description $ESXIMAGEPROFILEDescription `
     -ErrorAction Stop -ErrorVariable CreationError
