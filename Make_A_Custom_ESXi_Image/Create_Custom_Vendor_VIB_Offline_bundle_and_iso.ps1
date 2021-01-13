@@ -283,9 +283,9 @@ If (Test-Path $ExportFolder){
 }
 #Specify Log File
 $ORIGCSV = $ExportFolder+"\"+(($ESXIMAGEPROFILE.Name)+"_Original.csv")
-$EXPORTCSV = $ExportFolder+"\"+($NewProfileName+"_"+$ESXIMAGEVERSION+".csv")
-$EXPORTZIP = $ExportFolder+"\"+($NewProfileName+"_"+$ESXIMAGEVERSION+".zip")
-$EXPORTISO = $ExportFolder+"\"+($NewProfileName+"_"+$ESXIMAGEVERSION+".iso")
+$EXPORTCSV = $ExportFolder+"\"+($NewProfileName+"_"+$ESXIMAGEVERSION+"_"+$EDITION+".csv")
+$EXPORTZIP = $ExportFolder+"\"+($NewProfileName+"_"+$ESXIMAGEVERSION+"_"+$EDITION+".zip")
+$EXPORTISO = $ExportFolder+"\"+($NewProfileName+"_"+$ESXIMAGEVERSION+"_"+$EDITION+".iso")
 $COMPARETXT = $ExportFolder+"\"+($ESXIMAGEPROFILE.Name)+"_Comparison_Report.txt"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
