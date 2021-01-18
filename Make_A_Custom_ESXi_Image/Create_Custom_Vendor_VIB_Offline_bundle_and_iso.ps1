@@ -2,7 +2,7 @@
     .NOTES
 	===========================================================================
 	Created by:		Russell Hamker
-	Date:			January 12,2021
+	Date:			January 13,2021
 	Version:		2.2
 	Twitter:		@butch7903
 	GitHub:			https://github.com/butch7903
@@ -273,8 +273,7 @@ Write-Host "--------------------------------------------------------------------
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 #Create Export Folder
-$EXPORTDATE = (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
-$EXPORTFOLDERNAME = $NewProfileName + "_" + $ESXIMAGEVERSION + "_" + $EXPORTDATE 
+$EXPORTFOLDERNAME = $NewProfileName + "_" + $ESXIMAGEVERSION
 $ExportFolder = $pwd.path+"\Export\"+ $EXPORTFOLDERNAME
 If (Test-Path $ExportFolder){
 	Write-Host "Export Directory Created. Continuing..."
