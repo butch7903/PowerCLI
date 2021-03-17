@@ -1,5 +1,68 @@
-#Import needed PowerShell Modules
-Import-Module VMware.PowerCLI
+<#
+    .NOTES
+	===========================================================================
+	Created by:		Russell Hamker
+	Date:			January 1, 2019
+	Version:		1.0
+	Twitter:		@butch7903
+	GitHub:			https://github.com/butch7903
+	===========================================================================
+
+	.SYNOPSIS
+		This script will harden a host or cluster based on the VMware Hardening
+		Guide.
+
+	.DESCRIPTION
+		Use this script to harden a host.
+	.NOTES
+		This script requires a VMware PowerCLI minimum version 11.4 or greater. 
+		You will also want to update whatever NTP Servers you use in your environment
+		in this script before running it.
+
+	.TROUBLESHOOTING
+		
+#>
+
+##Check if Modules are installed, if so load them, else install them
+if (Get-InstalledModule -Name VMware.PowerCLI -MinimumVersion 11.4) {
+	Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+	Write-Host "PowerShell Module VMware PowerCLI required minimum version was found previously installed"
+	Write-Host "Importing PowerShell Module VMware PowerCLI"
+	Import-Module -Name VMware.PowerCLI
+	Write-Host "Importing PowerShell Module VMware PowerCLI Completed"
+	Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+	#CLEAR
+} else {
+	Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+	Write-Host "PowerShell Module VMware PowerCLI does not exist"
+	Write-Host "Setting Micrsoft PowerShell Gallery as a Trusted Repository"
+	Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+	Write-Host "Verifying that NuGet is at minimum version 2.8.5.201 to proceed with update"
+	Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Confirm:$false
+	Write-Host "Uninstalling any older versions of the VMware PowerCLI Module"
+	Get-Module VMware.PowerCLI | Uninstall-Module -Force
+	Write-Host "Installing Newest version of VMware PowerCLI PowerShell Module"
+	Install-Module -Name VMware.PowerCLI -Scope AllUsers
+	Write-Host "Creating a Desktop shortcut to the VMware PowerCLI Module"
+	$AppLocation = "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+	$Arguments = '-noe -c "Import-Module VMware.PowerCLI"'
+	$WshShell = New-Object -ComObject WScript.Shell
+	$Shortcut = $WshShell.CreateShortcut("$Home\Desktop\VMware PowerCLI.lnk")
+	$Shortcut.TargetPath = $AppLocation
+	$Shortcut.Arguments = $Arguments
+	$ShortCut.Hotkey = "CTRL+SHIFT+V"
+	$Shortcut.IconLocation = "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe,1"
+	$Shortcut.Description ="Launch VMware PowerCLI"
+	$Shortcut.WorkingDirectory ="C:\"
+	$Shortcut.Save()
+	Write-Host "Shortcut Created"
+	Write-Host "You may use the CTRL+SHIFT+V method to open VMware PowerCLI"
+	Write-Host "Importing PowerShell Module VMware PowerCLI"
+	Import-Module -Name VMware.PowerCLI
+	Write-Host "PowerShell Module VMware PowerCLI Loaded"
+	Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+	#Clear
+}
 
 ##Specify Variables
 $vCenter = Read-Host "Please Provide FQDN of your VCSA:"
@@ -242,7 +305,6 @@ IF($CLUSTERNAME)
 				$esxcli.ruleset.allowedip.list.invoke() | where {$_.Ruleset -eq "ntpClient"}
 				
 				#$esxcli.ruleset.set($false, $true, "ntpd")
-				
 			}
 			
 			#Setting Policies for NTP
@@ -487,7 +549,6 @@ IF($HOSTLIST)
 			Get-VmHostService -VMHost $VMHOST | Where-Object {$_.key -eq "ntpd"} | Start-VMHostService -Confirm:$false
 			Get-VMHost $VMHOST | Get-VMHostFirewallException | where {$_.Name -eq "NTP client"} #Verify
 		}
-		
 		
 		#Set Lock Down Mode
 		IF($ENABLELOCKDOWN -eq $true)
