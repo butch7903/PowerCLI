@@ -123,9 +123,6 @@ $STARTTIMESW = [Diagnostics.Stopwatch]::StartNew()
 ##Get Current Path
 $pwd = pwd
 
-##Setting CSV File Location 
-$CSVFILELOCATION = $pwd.path
-
 #Create Export Folder
 $CONFIGFOLDER = $pwd.path+"\Config"
 If (Test-Path $CONFIGFOLDER){
