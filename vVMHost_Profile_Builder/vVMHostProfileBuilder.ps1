@@ -2,8 +2,8 @@
     .NOTES
 	===========================================================================
 	Created by:		Russell Hamker
-	Date:			September 24, 2020
-	Version:		1.2.4
+	Date:			June 9, 2021
+	Version:		1.3.0
 	Twitter:		@butch7903
 	GitHub:			https://github.com/butch7903
 	===========================================================================
@@ -126,10 +126,26 @@ $pwd = pwd
 ##Setting CSV File Location 
 $CSVFILELOCATION = $pwd.path
 
+#Create Export Folder
+$CONFIGFOLDER = $pwd.path+"\Config"
+If (Test-Path $CONFIGFOLDER){
+	Write-Host "Config Directory Created. Continuing..."
+}Else{
+	New-Item $CONFIGFOLDER -type directory
+}
+
+#Create Export Folder
+$CREDSFOLDER = $pwd.path+"\Creds"
+If (Test-Path $CREDSFOLDER){
+	Write-Host "Config Directory Created. Continuing..."
+}Else{
+	New-Item $CREDSFOLDER -type directory
+}
+
 ##Import Site File or Create 1
 $SITECSVFILENAME = "SITEList.csv"
-$SITECSVFILEGET = Get-Item "$CSVFILELOCATION\$SITECSVFILENAME" -ErrorAction SilentlyContinue
-$SITECSVFILE = "$CSVFILELOCATION\$SITECSVFILENAME"
+$SITECSVFILEGET = Get-Item "$CONFIGFOLDER\$SITECSVFILENAME" -ErrorAction SilentlyContinue
+$SITECSVFILE = "$CONFIGFOLDER\$SITECSVFILENAME"
 $SITENAMELIST = @()
 If(!$SITECSVFILEGET)
 {
@@ -187,8 +203,8 @@ Write-Host "--------------------------------------------------------------------
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 ##Import VCSA File or Create 1
 $VCSACSVFILENAME = "VCSAlist.csv"
-$VCSACSVFILEGET = Get-Item "$CSVFILELOCATION\$VCSACSVFILENAME" -ErrorAction SilentlyContinue
-$VCSACSVFILE = "$CSVFILELOCATION\$VCSACSVFILENAME"
+$VCSACSVFILEGET = Get-Item "$CONFIGFOLDER\$VCSACSVFILENAME" -ErrorAction SilentlyContinue
+$VCSACSVFILE = "$CONFIGFOLDER\$VCSACSVFILENAME"
 If(!$VCSACSVFILEGET)
 {
 	CLS
@@ -246,13 +262,35 @@ Write-Host "VCSA Selected is $VCSA"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 
+##Select System Cache Claim Rule
+Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
+CLS
+Write-Host "Select System Cache Option used for Auto Deploy"
+$SYSCACHEOPTION = "Stateless with HD Cache","Stateful install on HD","Stateless on USB/SD","Stateful on USB/SD"
+$countCL = 0   
+Write-Host " " 
+Write-Host "System Cache Options: " 
+Write-Host " " 
+foreach($oC in $SYSCACHEOPTION)
+{   
+	Write-Output "[$countCL] $oc" 
+	$countCL = $countCL+1  
+}
+Write-Host " "   
+$choice = Read-Host "Which Auto Deploy Configuration will these hosts use?"
+$SYSCACHEOPTION = $SYSCACHEOPTION[$choice]
+Write-Host "You have selected Auto Deploy Configuration $SYSCACHEOPTION"
+Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
+Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+
 ##Select DNS
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 ##Import DNS File or Create 1
 $DNSCSVFILENAME = "DNSlist.csv"
-$DNSCSVFILEGET = Get-Item "$CSVFILELOCATION\$DNSCSVFILENAME" -ErrorAction SilentlyContinue
-$DNSCSVFILE = "$CSVFILELOCATION\$DNSCSVFILENAME"
+$DNSCSVFILEGET = Get-Item "$CONFIGFOLDER\$DNSCSVFILENAME" -ErrorAction SilentlyContinue
+$DNSCSVFILE = "$CONFIGFOLDER\$DNSCSVFILENAME"
 If(!$DNSCSVFILEGET)
 {
 	CLS
@@ -278,12 +316,12 @@ If($DNSCSVFILEGET)
 	CLS
 	Write-Host "DNS List CSV File found. Importing file..."
 	$DNSLIST = Import-CSV -PATH $DNSCSVFILE
-	If($DNSLIST.Site -Match $SITE)
+	If($DNSLIST.Site -eq $SITE)
 	{
 		Write-Host "Site $SITE DNS previously found, using DNS settings documented"
-		$DNSSERVERLIST = ($DNSLIST | Where {$_.Site -Match $SITE}).DNSServerList
-		$DNSDOMAIN = ($DNSLIST | Where {$_.Site -Match $SITE}).Domain
-		$DNSSEARCHDOMAINS = ($DNSLIST | Where {$_.Site -Match $SITE}).SearchDomains
+		$DNSSERVERLIST = ($DNSLIST | Where {$_.Site -eq $SITE}).DNSServerList
+		$DNSDOMAIN = ($DNSLIST | Where {$_.Site -eq $SITE}).Domain
+		$DNSSEARCHDOMAINS = ($DNSLIST | Where {$_.Site -eq $SITE}).SearchDomains
 	}Else{
 		$DNSARRAY = @()
 		$DNSARRAY += $DNSLIST
@@ -321,8 +359,8 @@ Write-Host "--------------------------------------------------------------------
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 ##Import NTP File or Create 1
 $NTPCSVFILENAME = "NTPlist.csv"
-$NTPCSVFILEGET = Get-Item "$CSVFILELOCATION\$NTPCSVFILENAME" -ErrorAction SilentlyContinue
-$NTPCSVFILE = "$CSVFILELOCATION\$NTPCSVFILENAME"
+$NTPCSVFILEGET = Get-Item "$CONFIGFOLDER\$NTPCSVFILENAME" -ErrorAction SilentlyContinue
+$NTPCSVFILE = "$CONFIGFOLDER\$NTPCSVFILENAME"
 If(!$NTPCSVFILEGET)
 {
 	CLS
@@ -344,9 +382,9 @@ If($NTPCSVFILEGET)
 	Write-Host "NTP List CSV File found. Importing file..."
 	Write-Host "Checking CSV for Site $SITE Listing"
 	$NTPLIST = Import-CSV -PATH $NTPCSVFILE
-	If($NTPLIST.Site -Match $SITE)
+	If($NTPLIST.Site -eq $SITE)
 	{
-		$NTP = ($NTPLIST | Where {$_.Site -Match $SITE}).NTP
+		$NTP = ($NTPLIST | Where {$_.Site -eq $SITE}).NTP
 		Write-Host "Based on $SITE selected, NTP server will be $NTP"
 	}Else{
 		Write-Host "Site NTP Server not found"
@@ -372,8 +410,8 @@ Write-Host "--------------------------------------------------------------------
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 ##Import SYSLOG File or Create 1
 $SYSLOGCSVFILENAME = "SYSLOGlist.csv"
-$SYSLOGCSVFILEGET = Get-Item "$CSVFILELOCATION\$SYSLOGCSVFILENAME" -ErrorAction SilentlyContinue
-$SYSLOGCSVFILE = "$CSVFILELOCATION\$SYSLOGCSVFILENAME"
+$SYSLOGCSVFILEGET = Get-Item "$CONFIGFOLDER\$SYSLOGCSVFILENAME" -ErrorAction SilentlyContinue
+$SYSLOGCSVFILE = "$CONFIGFOLDER\$SYSLOGCSVFILENAME"
 If(!$SYSLOGCSVFILEGET)
 {
 	Write-Host "SYSLOG List CSV File not found"
@@ -391,9 +429,9 @@ If($SYSLOGCSVFILEGET)
 	CLS
 	Write-Host "SYSLOG List CSV File found. Importing file..."
 	$SYSLOGLIST = Import-CSV -PATH $SYSLOGCSVFILE
-	If($SYSLOGLIST.Site -Match $SITE)
+	If($SYSLOGLIST.Site -eq $SITE)
 	{
-		$SYSLOG = ($SYSLOGLIST | Where {$_.Site -Match $SITE}).SYSLOG
+		$SYSLOG = ($SYSLOGLIST | Where {$_.Site -eq $SITE}).SYSLOG
 		Write-Host "Based on $SITE selected, SysLog server will be $SYSLOG"
 	}Else{
 		Write-Host "Site Syslog Server not found"
@@ -418,8 +456,8 @@ Write-Host "--------------------------------------------------------------------
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 ##Import SATP File or Create 1
 $SATPCSVFILENAME = "SATPlist.csv"
-$SATPCSVFILEGET = Get-Item "$CSVFILELOCATION\$SATPCSVFILENAME" -ErrorAction SilentlyContinue
-$SATPCSVFILE = "$CSVFILELOCATION\$SATPCSVFILENAME"
+$SATPCSVFILEGET = Get-Item "$CONFIGFOLDER\$SATPCSVFILENAME" -ErrorAction SilentlyContinue
+$SATPCSVFILE = "$CONFIGFOLDER\$SATPCSVFILENAME"
 If(!$SATPCSVFILEGET)
 {
 	CLS
@@ -488,9 +526,9 @@ If($SATPCSVFILEGET)
 	CLS
 	Write-Host "SATP List CSV File found. Importing file..."
 	$SATPLIST = Import-CSV -PATH $SATPCSVFILE
-	If($SATPLIST.Site -Match $SITE)
+	If($SATPLIST.Site -eq $SITE)
 	{
-		$SATPARRAY = ($SATPLIST | Where {$_.Site -Match $SITE})
+		$SATPARRAY = ($SATPLIST | Where {$_.Site -eq $SITE})
 	}Else{
 		$CompleteSetting = $null
 		$SATPNAME = @()
@@ -561,6 +599,279 @@ ForEach($SATP in $SATPARRAY)
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 
+##Input ESXi Local User Accounts
+Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
+##Create Secure AES Keys for User and Password Management
+$KeyFile = $CREDSFOLDER+"\"+"AES.key"
+If (Test-Path $KeyFile){
+Write-Host "AES File Exists"
+$Key = Get-Content $KeyFile
+Write-Host "Continuing..."
+}Else{
+$Key = New-Object Byte[] 16   # You can use 16, 24, or 32 for AES
+[Security.Cryptography.RNGCryptoServiceProvider]::Create().GetBytes($Key)
+$Key | out-file $KeyFile
+}
+##Import LOCAL USER File or Create 1
+$LOCALUSERCSVFILENAME = "LOCALUSERlist.csv"
+$LOCALUSERCSVFILEGET = Get-Item "$CONFIGFOLDER\$LOCALUSERCSVFILENAME" -ErrorAction SilentlyContinue
+$LOCALUSERCSVFILE = "$CONFIGFOLDER\$LOCALUSERCSVFILENAME"
+If(!$LOCALUSERCSVFILEGET)
+{
+	CLS
+	$CompleteSetting = $null
+	$USERLISTEXPORTARRAY = @()
+	DO{
+		Write-Host "Local User List CSV File not found"
+		$CorrectSetting = $null
+			DO{
+			#CSV Required fields
+			#Name,Description,posixId,sshKey,roleName,PasswordPolicy,Site
+			$LOCALUSERTEMPLIST = "" | Select Name,Description,posixId,sshKey,roleName,PasswordPolicy,Site
+			$LOCALUSERTEMPLIST.Name = Read-Host "Please provide the User Name
+			Example: root
+			"
+			$LOCALUSERTEMPLIST.Description = Read-Host "Please provide the Description of the user
+			Example: Administrator
+			"
+			$LOCALUSERTEMPLIST.posixId = Read-Host "Please provide the posixId
+			Example: 0
+			"
+			$LOCALUSERTEMPLIST.sshKey = Read-Host "Please provide the sshKey
+			Example: ?
+			Note: This can be left blank
+			"
+			$LOCALUSERTEMPLIST.roleName = Read-Host "Please provide the roleName
+			Example: Admin
+			"
+			Write-Host "Select the Password Policy for this user account:"
+			$LISTARRAY = @()
+			$TEMPARRAY = "" | Select Type,Description
+			$TEMPARRAY.Type = "Unchanged"
+			$TEMPARRAY.Description = "Leave password unchanged for default account (root only)"
+			$LISTARRAY += $TEMPARRAY
+			$TEMPARRAY = "" | Select Type,Description
+			$TEMPARRAY.Type = "Input"
+			$TEMPARRAY.Description = "User input password configuration. This requires user input in EVERY Host Customization"
+			$LISTARRAY += $TEMPARRAY
+			$TEMPARRAY = "" | Select Type,Description
+			$TEMPARRAY.Type = "Fixed"
+			$TEMPARRAY.Description = "Fixed password configuration. This will prompt you to store the password for future use"
+			$LISTARRAY += $TEMPARRAY
+			$countCL = 0   
+			Write-Host " " 
+			foreach($oC in $LISTARRAY)
+			{   
+				Write-Output "[$countCL] $($oc.Type), Description: $($oc.Description)" 
+				$countCL = $countCL+1  
+			}
+			Write-Host " "   
+			$choice = Read-Host "Which #'d selection do you wish to choose for the Password Policy?"
+			$LOCALUSERTEMPLIST.PasswordPolicy = ($LISTARRAY[$choice]).Type
+			If($LOCALUSERTEMPLIST.PasswordPolicy -eq "Fixed")
+			{
+				##Create Secure XML Credential File for User Account Fixed password Policy
+				$MgrCreds = $CREDSFOLDER+"\"+($LOCALUSERTEMPLIST.Name)+"_local_account_cred.xml"
+				If (Test-Path $MgrCreds){
+				Write-Host "$($LOCALUSERTEMPLIST.Name)_local_account_cred.xml file found"
+				Write-Host "Continuing..."
+				$ImportObject = Import-Clixml $MgrCreds
+				$SecureString = ConvertTo-SecureString -String $ImportObject.Password -Key $Key
+				$UserCredential = New-Object System.Management.Automation.PSCredential($ImportObject.UserName, $SecureString)
+				}
+				Else {
+				Write-Host "Please input the user password and click OK"
+				$newPScreds = Get-Credential -UserName ($LOCALUSERTEMPLIST.Name) -message "Enter Local User $($LOCALUSERTEMPLIST.Name) Password:"
+				$exportObject = New-Object psobject -Property @{
+					UserName = $newPScreds.UserName
+					Password = ConvertFrom-SecureString -SecureString $newPScreds.Password -Key $Key
+				}
+
+				$exportObject | Export-Clixml $MgrCreds
+				}
+			}
+			$LOCALUSERTEMPLIST.Site = $SITE
+			Write-Host "Local User Site Selected is"($LOCALUSERTEMPLIST.Site)
+			CLS 
+			Write-Host "Below is the details on the Local User account you input:"
+			$LOCALUSERTEMPLIST | Format-List
+			
+			Write-host "Is the Local User account Correct? (Default is Yes)" -ForegroundColor Yellow 
+			$Readhost = Read-Host " ( y / n ) " 
+			Switch ($ReadHost) 
+			 { 
+			   Y {Write-host "Yes selected, Continuing"; $CorrectSetting=$true} 
+			   N {Write-Host "No selected, Recreate Local User Account"; $CorrectSetting=$false} 
+			   Default {Write-Host "Default, Continuing"; $CorrectSetting=$true} 
+			 } 
+		}UNTIL($CorrectSetting -eq $true)
+		$USERLISTEXPORTARRAY += $LOCALUSERTEMPLIST
+		CLS
+		Write-Host "Below is the details of all the Local User Accounts you have input:"
+		$USERLISTEXPORTARRAY | Format-List
+		Write-Host " "
+		Write-host "Do You wish to add more Local User Accounts" -ForegroundColor Yellow 
+		$Readhost = Read-Host " ( y / n ) " 
+		Switch ($ReadHost) 
+		{ 
+			Y {Write-host "Yes selected, Adding Another Record"; $CompleteSetting=$true} 
+			N {Write-Host "No selected, All Records have been input"; $CompleteSetting=$false; $LOCALUSERTEMPLIST=$null} 
+			Default {Write-Host "Default,  All Records have been input"; $CompleteSetting=$false} 
+		} 
+	}UNTIL(($CompleteSetting -eq $false))
+	
+	
+	$USERLISTEXPORTARRAY | Export-CSV -NoTypeInformation -PATH $LOCALUSERCSVFILE
+	$LOCALUSERARRAY = $USERLISTEXPORTARRAY
+}
+If($LOCALUSERCSVFILEGET)
+{
+	CLS
+	Write-Host "Local User List CSV File found. Importing file..."
+	$LOCALUSERLISTEXPORTARRAY = Import-CSV -PATH $LOCALUSERCSVFILE
+	If($LOCALUSERLISTEXPORTARRAY.Site -eq $SITE)
+	{
+		$LOCALUSERARRAY = ($LOCALUSERLISTEXPORTARRAY | Where {$_.Site -eq $SITE})
+		#Verify that each fixed password has a xml file
+		ForEach($LOCALUSERTEMPLIST in $LOCALUSERARRAY)
+		{
+			##Create Secure XML Credential File for User Account Fixed password Policy
+			$MgrCreds = $CREDSFOLDER+"\"+($LOCALUSERTEMPLIST.Name)+"_local_account_cred.xml"
+			If (Test-Path $MgrCreds){
+			Write-Host "$($LOCALUSERTEMPLIST.Name)_local_account_cred.xml file found"
+			Write-Host "Continuing..."
+			$ImportObject = Import-Clixml $MgrCreds
+			$SecureString = ConvertTo-SecureString -String $ImportObject.Password -Key $Key
+			$UserCredential = New-Object System.Management.Automation.PSCredential($ImportObject.UserName, $SecureString)
+			}
+			Else {
+			Write-Host "$($LOCALUSERTEMPLIST.Name)_local_account_cred.xml file not found" -foregroundcolor red
+			Write-Host "Please input the user password and click OK"
+			$newPScreds = Get-Credential -UserName ($LOCALUSERTEMPLIST.Name) -message "Enter Local User $($LOCALUSERTEMPLIST.Name) Password:"
+			$exportObject = New-Object psobject -Property @{
+				UserName = $newPScreds.UserName
+				Password = ConvertFrom-SecureString -SecureString $newPScreds.Password -Key $Key
+			}
+
+			$exportObject | Export-Clixml $MgrCreds
+			}
+		}
+	}Else{
+		$CompleteSetting = $null
+		$USERLISTEXPORTARRAY = @()
+		DO{
+			Write-Host "Local User List CSV File not found"
+			$CorrectSetting = $null
+				DO{
+				#CSV Required fields
+				#Name,Description,posixId,sshKey,roleName,PasswordPolicy,Site
+				$LOCALUSERTEMPLIST = "" | Select Name,Description,posixId,sshKey,roleName,PasswordPolicy,Site
+				$LOCALUSERTEMPLIST.Name = Read-Host "Please provide the User Name
+				Example: root
+				"
+				$LOCALUSERTEMPLIST.Description = Read-Host "Please provide the Description of the user
+				Example: Administrator
+				"
+				$LOCALUSERTEMPLIST.posixId = Read-Host "Please provide the posixId
+				Example: 0
+				"
+				$LOCALUSERTEMPLIST.sshKey = Read-Host "Please provide the sshKey
+				Example: ?
+				Note: This can be left blank
+				"
+				$LOCALUSERTEMPLIST.roleName = Read-Host "Please provide the roleName
+				Example: Admin
+				"
+				Write-Host "Select the Password Policy for this user account:"
+				$LISTARRAY = @()
+				$TEMPARRAY = "" | Select Type,Description
+				$TEMPARRAY.Type = "Unchanged"
+				$TEMPARRAY.Description = "Leave password unchanged for default account (root only)"
+				$LISTARRAY += $TEMPARRAY
+				$TEMPARRAY = "" | Select Type,Description
+				$TEMPARRAY.Type = "Input"
+				$TEMPARRAY.Description = "User input password configuration. This requires user input in EVERY Host Customization"
+				$LISTARRAY += $TEMPARRAY
+				$TEMPARRAY = "" | Select Type,Description
+				$TEMPARRAY.Type = "Fixed"
+				$TEMPARRAY.Description = "Fixed password configuration. This will prompt you to store the password for future use"
+				$LISTARRAY += $TEMPARRAY
+				$countCL = 0   
+				Write-Host " " 
+				foreach($oC in $LISTARRAY)
+				{   
+					Write-Output "[$countCL] $($oc.Type), Description: $($oc.Description)" 
+					$countCL = $countCL+1  
+				}
+				Write-Host " "   
+				$choice = Read-Host "Which #'d selection do you wish to choose for the Password Policy?"
+				$LOCALUSERTEMPLIST.PasswordPolicy = ($LISTARRAY[$choice]).Type
+				If($LOCALUSERTEMPLIST.PasswordPolicy -eq "Fixed")
+				{
+					##Create Secure XML Credential File for User Account Fixed password Policy
+					$MgrCreds = $CREDSFOLDER+"\"+($LOCALUSERTEMPLIST.Name)+"_local_account_cred.xml"
+					If (Test-Path $MgrCreds){
+					Write-Host "$($LOCALUSERTEMPLIST.Name)_local_account_cred.xml file found"
+					Write-Host "Continuing..."
+					$ImportObject = Import-Clixml $MgrCreds
+					$SecureString = ConvertTo-SecureString -String $ImportObject.Password -Key $Key
+					$UserCredential = New-Object System.Management.Automation.PSCredential($ImportObject.UserName, $SecureString)
+					}
+					Else {
+					Write-Host "Please input the user password and click OK"
+					$newPScreds = Get-Credential -UserName ($LOCALUSERTEMPLIST.Name) -message "Enter Local User $($LOCALUSERTEMPLIST.Name) Password:"
+					$exportObject = New-Object psobject -Property @{
+						UserName = $newPScreds.UserName
+						Password = ConvertFrom-SecureString -SecureString $newPScreds.Password -Key $Key
+					}
+
+					$exportObject | Export-Clixml $MgrCreds
+					}
+				}
+				$LOCALUSERTEMPLIST.Site = $SITE
+				Write-Host "Local User Site Selected is"($LOCALUSERTEMPLIST.Site)
+				CLS 
+				Write-Host "Below is the details on the Local User account you input:"
+				$LOCALUSERTEMPLIST | Format-List
+				
+				Write-host "Is the Local User account Correct? (Default is Yes)" -ForegroundColor Yellow 
+				$Readhost = Read-Host " ( y / n ) " 
+				Switch ($ReadHost) 
+				 { 
+				   Y {Write-host "Yes selected, Continuing"; $CorrectSetting=$true} 
+				   N {Write-Host "No selected, Recreate Local User Account"; $CorrectSetting=$false} 
+				   Default {Write-Host "Default, Continuing"; $CorrectSetting=$true} 
+				 } 
+			}UNTIL($CorrectSetting -eq $true)
+			$USERLISTEXPORTARRAY += $LOCALUSERTEMPLIST
+			CLS
+			Write-Host "Below is the details of all the Local User Accounts you have input:"
+			$USERLISTEXPORTARRAY | Format-List
+			Write-Host " "
+			Write-host "Do You wish to add more Local User Accounts" -ForegroundColor Yellow 
+			$Readhost = Read-Host " ( y / n ) " 
+			Switch ($ReadHost) 
+			{ 
+				Y {Write-host "Yes selected, Adding Another Record"; $CompleteSetting=$true} 
+				N {Write-Host "No selected, All Records have been input"; $CompleteSetting=$false; $LOCALUSERTEMPLIST=$null} 
+				Default {Write-Host "Default,  All Records have been input"; $CompleteSetting=$false} 
+			} 
+		}UNTIL(($CompleteSetting -eq $false))
+		
+		
+		$USERLISTEXPORTARRAY | Export-CSV -NoTypeInformation -PATH $LOCALUSERCSVFILE
+		$LOCALUSERARRAY = $USERLISTEXPORTARRAY
+	}
+}
+Write-Host "ESXi Local User Accounts Selected Include:"
+ForEach($LOCALUSER in $LOCALUSERARRAY)
+{
+	Write-Output $LOCALUSER | Format-List
+}
+Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
+Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+
 ##Get Date Info for Logging
 $LOGDATE = Get-Date -format "MMM-dd-yyyy_HH-mm"
 ##Specify Log File Info
@@ -583,24 +894,30 @@ Write-Host "Script Logging Started"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 
-##Document Selectsion
+##Document Selections
 Do
 {
 CLS
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "Documenting User Selections"
-Write-Host "Site:               $SITE"
-Write-Host "VCSA:               $VCSA"
-Write-Host "DNS Server List:    $DNSSERVERLIST"
-Write-Host "DNS Domain:         $DNSDOMAIN"
-Write-Host "DNS Search Domains: $DNSSEARCHDOMAINS"
-Write-Host "NTP List:           $NTP"
-Write-Host "SysLog Server:      $SYSLOG"
+Write-Host "Site:               			$SITE"
+Write-Host "VCSA:               			$VCSA"
+Write-Host "Auto Deploy System Cache Option:	$SYSCACHEOPTION"
+Write-Host "DNS Server List:    			$DNSSERVERLIST"
+Write-Host "DNS Domain:         			$DNSDOMAIN"
+Write-Host "DNS Search Domains: 			$DNSSEARCHDOMAINS"
+Write-Host "NTP List:           			$NTP"
+Write-Host "SysLog Server:      			$SYSLOG"
 Write-Host "SATP Claim Rule(s):"
 ForEach($SATP in $SATPARRAY)
 {
 	Write-Output $SATP | Format-List
+}
+Write-Host "ESXi Local User Accounts:"
+ForEach($LOCALUSER in $LOCALUSERARRAY)
+{
+	Write-Output $LOCALUSER | Format-List
 }
 
 	Write-host "Are the Above Settings Correct?" -ForegroundColor Yellow 
@@ -652,6 +969,7 @@ Write-Host "--------------------------------------------------------------------
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "Connecting to vCenter $VCSA"
 $VISERVER = Connect-VIServer -server $VCSA -Credential $MyCredential
+$VCSAIP = ([System.Net.Dns]::GetHostEntry($VCSA)).AddressList.IPAddressToString
 Write-Host "Connected to vCenter "
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
@@ -1056,7 +1374,7 @@ If($CEIPOPTINSTATUS)
 	$configOption = New-Object VMware.Vim.OptionProfile
 	$configOption[0].Key = 'key-vim-profile-host-OptionProfile-UserVars_HostClientCEIPOptIn'
 	$configOption[0].ProfileTypeName = 'OptionProfile'
-	$configOption[0].ProfileVersion = '6.7.0'
+	$configOption[0].ProfileVersion = "$($spec.ApplyProfile.ProfileVersion)"
 	$configOption[0].Enabled = $true
 	$configOption[0].Favorite = $true
 	$configOption[0].Policy = New-Object VMware.Vim.ProfilePolicy
@@ -1114,7 +1432,7 @@ IF($SCRATCHSTATUS)
 	$configOption = New-Object VMware.Vim.OptionProfile
 	$configOption[0].Key = 'key-vim-profile-host-OptionProfile-ScratchConfig_ConfiguredScratchLocation'
 	$configOption[0].ProfileTypeName = 'OptionProfile'
-	$configOption[0].ProfileVersion = '6.7.0'
+	$configOption[0].ProfileVersion = "$($spec.ApplyProfile.ProfileVersion)"
 	$configOption[0].Enabled = $true
 	$configOption[0].Favorite = $true
 	$configOption[0].Policy = New-Object VMware.Vim.ProfilePolicy
@@ -1210,7 +1528,7 @@ If($GetUseATSForHBOnVMFS5Spec.count -lt 1)
 	$configOption = New-Object VMware.Vim.OptionProfile[] (10999)
 	$configOption[0] = New-Object VMware.Vim.OptionProfile
 	$configOption[0].ProfileTypeName = 'OptionProfile'
-	$configOption[0].ProfileVersion = '6.7.0'
+	$configOption[0].ProfileVersion = "$($spec.ApplyProfile.ProfileVersion)"
 	$configOption[0].Enabled = $true
 	$configOption[0].Favorite = $true
 	$configOption[0].Key = 'key-vim-profile-host-OptionProfile-'
@@ -1237,7 +1555,7 @@ If($GetUseATSForHBOnVMFS5Spec.count -lt 1)
 Write-Host "Enforcing VPXA Log settings. Advanced Configuration Settings > vCenter Agent (vpxa) Configurations"
 (((((($spec.ApplyProfile.Property | where {$_.PropertyName -eq "vpxaConfig_vpxaConfig_VpxaConfigProfile"}).Profile) |where {$_.ProfileTypeName -eq "vpxaConfig_vpxaConfig_VpxaConfigProfile"}).Policy `
 | Where {$_.Id -eq "vpxaConfig.vpxaConfig.VpxaConfigProfilePolicy"}).PolicyOption | `
-Where {$_.Id -eq "vpxaConfig.vpxaConfig.VpxaConfigProfilePolicyOption"}).Parameter |Where {$_.Key -eq "logLevel"}).Value = "verbose" #https://kb.vmware.com/s/article/1004795 Default for 5.x-6.x is verbose
+Where {$_.Id -eq "vpxaConfig.vpxaConfig.VpxaConfigProfilePolicyOption"}).Parameter |Where {$_.Key -eq "logLevel"}).Value = "info" #https://kb.vmware.com/s/article/1004795 Default for 5.x-6.x is verbose
 Write-Host "Setting VPXA Log settings as Favorite"
 (($spec.ApplyProfile.Property | where {$_.PropertyName -eq "vpxaConfig_vpxaConfig_VpxaConfigProfile"}).Profile | where {$_.ProfileTypeName -eq "vpxaConfig_vpxaConfig_VpxaConfigProfile"}).Favorite = $true
 Write-Host "VPXA Logging set to :"
@@ -1279,7 +1597,7 @@ If($FIXEDNTPVERIFY)
 	Write-Host "Setting NTP Server Setttings based on Site $SITE to $NTP"
 	$spec.ApplyProfile.Datetime = New-Object VMware.Vim.DateTimeProfile
 	$spec.ApplyProfile.Datetime.ProfileTypeName = 'DateTimeProfile'
-	$spec.ApplyProfile.Datetime.ProfileVersion = '6.7.0'
+	$spec.ApplyProfile.Datetime.ProfileVersion = "$($spec.ApplyProfile.ProfileVersion)"
 	$spec.ApplyProfile.Datetime.Enabled = $true
 	$spec.ApplyProfile.Datetime.Policy = New-Object VMware.Vim.ProfilePolicy[] (1)
 	$spec.ApplyProfile.Datetime.Policy[0] = New-Object VMware.Vim.ProfilePolicy
@@ -1303,7 +1621,7 @@ If($FIXEDNTPVERIFY)
 	$NTPARRAY = ($NTP.Split(',') | % { $_.Trim() })
 	$spec.ApplyProfile.Datetime = New-Object VMware.Vim.DateTimeProfile
 	$spec.ApplyProfile.Datetime.ProfileTypeName = 'DateTimeProfile'
-	$spec.ApplyProfile.Datetime.ProfileVersion = '6.7.0'
+	$spec.ApplyProfile.Datetime.ProfileVersion = "$($spec.ApplyProfile.ProfileVersion)"
 	$spec.ApplyProfile.Datetime.Enabled = $true
 	$spec.ApplyProfile.Datetime.Policy = New-Object VMware.Vim.ProfilePolicy[] (1)
 	$spec.ApplyProfile.Datetime.Policy[0] = New-Object VMware.Vim.ProfilePolicy
@@ -1392,7 +1710,7 @@ IF($FIPSARRAY)
 		$PROFILE.Key = $FIPS.NAME #$FIPS.Key 
 		$PROFILE.Enabled = $True
 		$PROFILE.ProfileTypeName = 'security_FipsProfile_FipsProfile'
-		$PROFILE.ProfileVersion = '6.7.0'
+		$PROFILE.ProfileVersion = "$($spec.ApplyProfile.ProfileVersion)"
 		$PROFILE.Enabled = $True
 		$PROFILE.Policy = New-Object VMware.Vim.ProfilePolicy
 		$PROFILE.Policy[0].Id = 'security.FipsProfile.FipsProfilePolicy'
@@ -1483,7 +1801,7 @@ IF($SVCSARRAY)
 		$PROFILE.Key = $SVCSNAME #$SVCS.Key 
 		$PROFILE.Enabled = $True
 		$PROFILE.ProfileTypeName = 'service_serviceProfile_ServiceConfigProfile'
-		$PROFILE.ProfileVersion = '6.7.0'
+		$PROFILE.ProfileVersion = "$($spec.ApplyProfile.ProfileVersion)"
 		$PROFILE.Enabled = $True
 		$PROFILE.Favorite = $SVCS.Favorite 
 		$PROFILE.Policy += New-Object VMware.Vim.ProfilePolicy -Property @{Id='service.serviceProfile.ServiceNamePolicy'} 
@@ -1550,7 +1868,7 @@ ForEach($SATP in $SATPARRAY)
 	($spec.ApplyProfile.Storage.Property | where {$_.PropertyName -eq 'nmp_nmpProfile_NativeMultiPathingProfile'}).Profile[0].Property[0].Profile[0].Property[0].Profile[$CL].Key = $SATP.Vendor #'602486e6af0ae99dd02ebd6fd2ddf8c40e57eba85891cf64bb2864bf2e21c535'
 	($spec.ApplyProfile.Storage.Property | where {$_.PropertyName -eq 'nmp_nmpProfile_NativeMultiPathingProfile'}).Profile[0].Property[0].Profile[0].Property[0].Profile[$CL].Enabled = $True
 	($spec.ApplyProfile.Storage.Property | where {$_.PropertyName -eq 'nmp_nmpProfile_NativeMultiPathingProfile'}).Profile[0].Property[0].Profile[0].Property[0].Profile[$CL].ProfileTypeName = 'nmp_nmpProfile_SatpClaimrulesProfile'
-	($spec.ApplyProfile.Storage.Property | where {$_.PropertyName -eq 'nmp_nmpProfile_NativeMultiPathingProfile'}).Profile[0].Property[0].Profile[0].Property[0].Profile[$CL].ProfileVersion = '6.7.0'
+	($spec.ApplyProfile.Storage.Property | where {$_.PropertyName -eq 'nmp_nmpProfile_NativeMultiPathingProfile'}).Profile[0].Property[0].Profile[0].Property[0].Profile[$CL].ProfileVersion = "$($spec.ApplyProfile.ProfileVersion)"
 	($spec.ApplyProfile.Storage.Property | where {$_.PropertyName -eq 'nmp_nmpProfile_NativeMultiPathingProfile'}).Profile[0].Property[0].Profile[0].Property[0].Profile[$CL].Favorite = $true
 	($spec.ApplyProfile.Storage.Property | where {$_.PropertyName -eq 'nmp_nmpProfile_NativeMultiPathingProfile'}).Profile[0].Property[0].Profile[0].Property[0].Profile[$CL].Policy = New-Object VMware.Vim.ProfilePolicy[] (2)
 	($spec.ApplyProfile.Storage.Property | where {$_.PropertyName -eq 'nmp_nmpProfile_NativeMultiPathingProfile'}).Profile[0].Property[0].Profile[0].Property[0].Profile[$CL].Policy[0] = New-Object VMware.Vim.ProfilePolicy
@@ -1662,11 +1980,12 @@ $PARMARRAY += $TEMPPARM
 $TEMPPARM = $null
 $TEMPPARM = New-Object VMware.Vim.KeyAnyValue
 $TEMPPARM.Key = "loglevel"
-$TEMPPARM.value = "info"
+$TEMPPARM.value = "info" #info,warning,etc
 $PARMARRAY += $TEMPPARM
 ($spec.ApplyProfile.Property | Where {$_.PropertyName -eq "snmp_GenericAgentProfiles_GenericAgentConfigProfile"}).Profile.Property.Profile.Policy.PolicyOption.Parameter = $PARMARRAY
 Write-Host "Completed clearing any SNMP configurations"
 
+<#
 ##NULL/Clear out CIM Profile
 Write-Host "Removing any CIM Indication Subscriptions. General System Configuration > Management Agent Configuration > CIM Indication Subscriptions"											   
 (($spec.ApplyProfile.Property | Where {$_.PropertyName -eq "cimIndications_cimIndicationsProfile_CimIndications"}).Profile).Property.Profile = $null
@@ -1680,7 +1999,7 @@ If(!$CIMPROFILE)
 	$PROFILE[0].Key = "54ec12f488aedfe9f59ee9b240fdbb046665f91fc88fbeca81de2b5ecdaa6e51" 
 	$PROFILE[0].Enabled = $True
 	$PROFILE[0].ProfileTypeName = "cimIndications_cimxmlIndications_CimXmlIndicationsProfile"
-	$PROFILE[0].ProfileVersion = "6.7.0"
+	$PROFILE[0].ProfileVersion = "$($spec.ApplyProfile.ProfileVersion)"
 	$PROFILE[0].Favorite = $True
 	$PROFILE[0].Policy = New-Object VMware.Vim.ProfilePolicy
 	$PROFILE[0].Policy[0].Id = "cimIndications.cimxmlIndications.CimXmlIndicationsProfilePolicy"
@@ -1745,10 +2064,11 @@ If(!$CIMPROFILE)
 	
 	(($spec.ApplyProfile.Property | Where {$_.PropertyName -eq "cimIndications_cimIndicationsProfile_CimIndications"}).Profile).Property.Profile = $PROFILE[0]
 }
+#>
 
 #Functional. Opened VMware Support case to troubleshoot. Support Case # 20130695506/20140259207 
 Write-Host "Setting Host Power System settings. Power System Configuration > Power System"
-((($spec.ApplyProfile.Property | where {$_.PropertyName -eq "powerSystem_powerSystem_PowerSystemProfile"}).Profile | Where {$_.ProfileTypeName -eq "powerSystem_powerSystem_PowerSystemProfile"}).Policy | where {$_.Id -eq "powerSystem.powerSystem.CpuPolicy"}).PolicyOption.id = "powerSystem.powerSystem.StaticCpuPolicyOption"
+((($spec.ApplyProfile.Property | where {$_.PropertyName -eq "powerSystem_powerSystem_PowerSystemProfile"}).Profile | Where {$_.ProfileTypeName -eq "powerSystem_powerSystem_PowerSystemProfile"}).Policy | where {$_.Id -eq "powerSystem.powerSystem.CpuPolicy"}).PolicyOption.id = "powerSystem.powerSystem.DynamicCpuPolicyOption"
 <#
 Power Options
 Balanced  --------  powerSystem.powerSystem.DynamicCpuPolicyOption  
@@ -1759,44 +2079,6 @@ Explicit option --- NoDefaultOption
 
 #>
 
-##Set USB Quirks
-#Required for HPE Hardware https://kb.vmware.com/s/article/80416
-Write-Host "Checking if USB Quirks is set as a requirement under Advanced Configuration Settings > Advanced Options > USB.Quirks"
-$USBQUIRKSTATUS = $spec.ApplyProfile.Option | where {$_.Key -eq "key-vim-profile-host-OptionProfile-USB_quirks"}
-IF($USBQUIRKSTATUS)
-{
-	Write-Host "USB Quirks Configuration already exists :)"
-	Write-Host "Setting USB Quirks as Favorite"
-	($spec.ApplyProfile.Option | where {$_.Key -eq "key-vim-profile-host-OptionProfile-USB_quirks"}).Favorite = $true
-	($spec.ApplyProfile.Option | where {$_.Key -eq "key-vim-profile-host-OptionProfile-USB_quirks"}).Favorite
-	Write-Host "Completed Updating USB Quirks Configuration"
-}ELSE{
-	Write-Host "USB Quirks Configuration not found."
-	Write-Host "Adding USB Quirks to Configuration"
-	$configOption = $null
-	$configOption = New-Object VMware.Vim.OptionProfile
-	$configOption[0].Key = 'key-vim-profile-host-OptionProfile-USB_quirks'
-	$configOption[0].ProfileTypeName = 'OptionProfile'
-	$configOption[0].ProfileVersion = '6.7.0'
-	$configOption[0].Enabled = $true
-	$configOption[0].Favorite = $true
-	$configOption[0].Policy = New-Object VMware.Vim.ProfilePolicy
-	$configOption[0].Policy[0].Id = 'ConfigOptionPolicy'
-	$configOption[0].Policy[0].PolicyOption = New-Object VMware.Vim.PolicyOption
-	$configOption[0].Policy[0].PolicyOption.Id = 'FixedConfigOption'
-	$configOption[0].Policy[0].PolicyOption.Parameter = New-Object VMware.Vim.KeyAnyValue[] (2)
-	$configOption[0].Policy[0].PolicyOption.Parameter[0] = New-Object VMware.Vim.KeyAnyValue
-	$configOption[0].Policy[0].PolicyOption.Parameter[0].Value = 'USB.quirks'
-	$configOption[0].Policy[0].PolicyOption.Parameter[0].Key = 'key'
-	$configOption[0].Policy[0].PolicyOption.Parameter[1] = New-Object VMware.Vim.KeyAnyValue
-	$configOption[0].Policy[0].PolicyOption.Parameter[1].Value = "::::TEST:0x0bda:0x0329:0:0xffff:UQ_MSC_BAD_READ_CAPACITY_16"
-	$configOption[0].Policy[0].PolicyOption.Parameter[1].Key = 'value'
-	##Add Options to SPEC
-	Write-Host "Adding USB Quirks Configuration to SPEC"
-	$spec.ApplyProfile.Option +=@($configOption)
-	Write-Host "Completed adding USB Quirks to Configuration"
-}
-
 <#
 ##Disable IPv6 on VMHost Management
 Write-Host "Enforcing Disablement of IPv6 for Hosts"
@@ -1804,8 +2086,389 @@ Write-Host "Disabling IPv6 for Host Management under -> General System Settings 
 ((($spec.ApplyProfile.Property.Profile | where {$_.ProfileTypeName -eq 'kernelModule_moduleProfile_KernelModuleConfigProfile'}).Property.Profile | Where {$_.Key -eq 'KernelModuleProfile-tcpip4-key'}).Property.Profile | where {$_.Key -eq 'KernelModuleParamProfile-ipv6-key'}).Favorite = $true
 (((($spec.ApplyProfile.Property.Profile | where {$_.ProfileTypeName -eq 'kernelModule_moduleProfile_KernelModuleConfigProfile'}).Property.Profile | Where {$_.Key -eq 'KernelModuleProfile-tcpip4-key'}).Property.Profile | where {$_.Key -eq 'KernelModuleParamProfile-ipv6-key'}).Policy.PolicyOption[0].Parameter | Where {$_.Key -eq 'parameterValue'}).Value = '0' #0 Disables IPv6, 1 Enables IPv6
 #>
-
 Write-Host "Completed adding Best Practices Configuration"
+Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
+Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+
+Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
+Write-Host "Setting Auto Deploy Best Practices Configuration"
+#Note: If you dont use Auto Deploy, you may want to comment out this section
+
+##Set Host System Cache
+#Options "Stateless with HD Cache","Stateful install on HD","Stateless on USB/SD","Stateful on USB/SD"
+If($SYSCACHEOPTION -eq "Stateless with HD Cache")
+{
+	Write-Host "Setting System Cache to 'Enable stateless caching on the host'"
+#Note Value Setting is designed for Cisco UCS
+$SYSTEMCACHEJSON = @"
+{
+    "PropertyName":  "systemCache_caching_CachingProfile",
+    "Array":  false,
+    "Profile":  [
+                    {
+                        "Enabled":  true,
+                        "Policy":  [
+                                       {
+                                           "Id":  "systemCache.caching.CachingPolicy",
+                                           "PolicyOption":  {
+                                                                "Id":  "systemCache.caching.StatelessOption",
+                                                                "Parameter":  [
+                                                                                  {
+                                                                                      "Key":  "firstDisk",
+                                                                                      "Value":  "LSI,AVAGO,UCSB-MRAID12G,localesx,local"
+                                                                                  },
+                                                                                  {
+                                                                                      "Key":  "overwriteVmfs",
+                                                                                      "Value":  true
+                                                                                  },
+                                                                                  {
+                                                                                      "Key":  "ignoreSsd",
+                                                                                      "Value":  false
+                                                                                  }
+                                                                              ]
+                                                            }
+                                       }
+                                   ],
+                        "ProfileTypeName":  "systemCache_caching_CachingProfile",
+                        "ProfileVersion":  "$($spec.ApplyProfile.ProfileVersion)",
+                        "Property":  null,
+                        "Favorite":  true,
+                        "ToBeMerged":  null,
+                        "ToReplaceWith":  null,
+                        "ToBeDeleted":  null,
+                        "CopyEnableStatus":  null,
+                        "Hidden":  null
+                    }
+                ]
+}
+"@
+	($spec.ApplyProfile.Property | Where{$_.PropertyName -eq "systemCache_caching_CachingProfile"}).Profile = (ConvertFrom-Json $SYSTEMCACHEJSON).Profile
+}
+If($SYSCACHEOPTION -eq "Stateful install on HD")
+{
+	Write-Host "Setting System Cache to 'Enable stateful installs on the host'"
+#Note Value Setting is designed for Cisco UCS
+$SYSTEMCACHEJSON = @"
+{
+    "PropertyName":  "systemCache_caching_CachingProfile",
+    "Array":  false,
+    "Profile":  [
+                    {
+                        "Enabled":  true,
+                        "Policy":  [
+                                       {
+                                           "Id":  "systemCache.caching.CachingPolicy",
+                                           "PolicyOption":  {
+                                                                "Id":  "systemCache.caching.StatefulOption",
+                                                                "Parameter":  [
+                                                                                  {
+                                                                                      "Key":  "firstDisk",
+                                                                                      "Value":  "LSI,AVAGO,UCSB-MRAID12G,localesx,local"
+                                                                                  },
+                                                                                  {
+                                                                                      "Key":  "overwriteVmfs",
+                                                                                      "Value":  true
+                                                                                  },
+                                                                                  {
+                                                                                      "Key":  "ignoreSsd",
+                                                                                      "Value":  false
+                                                                                  }
+                                                                              ]
+                                                            }
+                                       }
+                                   ],
+                        "ProfileTypeName":  "systemCache_caching_CachingProfile",
+                        "ProfileVersion":  "$($spec.ApplyProfile.ProfileVersion)",
+                        "Property":  null,
+                        "Favorite":  true,
+                        "ToBeMerged":  null,
+                        "ToReplaceWith":  null,
+                        "ToBeDeleted":  null,
+                        "CopyEnableStatus":  null,
+                        "Hidden":  null
+                    }
+                ]
+}
+"@
+	($spec.ApplyProfile.Property | Where{$_.PropertyName -eq "systemCache_caching_CachingProfile"}).Profile = (ConvertFrom-Json $SYSTEMCACHEJSON).Profile
+}
+If($SYSCACHEOPTION -eq "Stateless on USB/SD")
+{
+	Write-Host "Setting System Cache to 'Enable stateless caching to a USB disk on the host'"
+$SYSTEMCACHEJSON = @"
+{
+    "PropertyName":  "systemCache_caching_CachingProfile",
+    "Array":  false,
+    "Profile":  [
+                    {
+                        "Enabled":  true,
+                        "Policy":  [
+                                       {
+                                           "Id":  "systemCache.caching.CachingPolicy",
+                                           "PolicyOption":  {
+                                                                "Id":  "systemCache.caching.StatelessUSBOption",
+                                                                "Parameter":  null
+                                                            }
+                                       }
+                                   ],
+                        "ProfileTypeName":  "systemCache_caching_CachingProfile",
+                        "ProfileVersion":  "$($spec.ApplyProfile.ProfileVersion)",
+                        "Property":  null,
+                        "Favorite":  true,
+                        "ToBeMerged":  null,
+                        "ToReplaceWith":  null,
+                        "ToBeDeleted":  null,
+                        "CopyEnableStatus":  null,
+                        "Hidden":  null
+                    }
+                ]
+}
+"@
+	($spec.ApplyProfile.Property | Where{$_.PropertyName -eq "systemCache_caching_CachingProfile"}).Profile = (ConvertFrom-Json $SYSTEMCACHEJSON).Profile
+}
+If($SYSCACHEOPTION -eq "Stateful on USB/SD")
+{
+	Write-Host "Setting System Cache to 'Enable stateful installs to a USB disk on the host'"
+$SYSTEMCACHEJSON = @"
+{
+    "PropertyName":  "systemCache_caching_CachingProfile",
+    "Array":  false,
+    "Profile":  [
+                    {
+                        "Enabled":  true,
+                        "Policy":  [
+                                       {
+                                           "Id":  "systemCache.caching.CachingPolicy",
+                                           "PolicyOption":  {
+                                                                "Id":  "systemCache.caching.StatefulUSBOption",
+                                                                "Parameter":  null
+                                                            }
+                                       }
+                                   ],
+                        "ProfileTypeName":  "systemCache_caching_CachingProfile",
+                        "ProfileVersion":  "$($spec.ApplyProfile.ProfileVersion)",
+                        "Property":  null,
+                        "Favorite":  true,
+                        "ToBeMerged":  null,
+                        "ToReplaceWith":  null,
+                        "ToBeDeleted":  null,
+                        "CopyEnableStatus":  null,
+                        "Hidden":  null
+                    }
+                ]
+}
+"@
+	($spec.ApplyProfile.Property | Where{$_.PropertyName -eq "systemCache_caching_CachingProfile"}).Profile = (ConvertFrom-Json $SYSTEMCACHEJSON).Profile
+}
+
+##Enable Net Core Dump Profile
+#How to Get JSON
+#($spec.ApplyProfile.network.property |Where{$_.PropertyName -eq "netdumpConfig_netdump_NetdumpProfile"}).Profile | ConvertTo-Json -Depth 10
+Write-Host "Setting Network Coredump Server to VCSA $VCSA IP $VCSAIP"
+$COREDUMPJSON = @"
+{
+    "Enabled":  true,
+    "Policy":  [
+                   {
+                       "Id":  "netdumpConfig.netdump.NetdumpProfilePolicy",
+                       "PolicyOption":  {
+                                            "Id":  "netdumpConfig.netdump.NetdumpProfilePolicyOption",
+                                            "Parameter":  [
+                                                              {
+                                                                  "Key":  "HostVNic",
+                                                                  "Value":  "vmk0"
+                                                              },
+                                                              {
+                                                                  "Key":  "NetworkServerPort",
+                                                                  "Value":  6500
+                                                              },
+                                                              {
+                                                                  "Key":  "NetworkServerIP",
+                                                                  "Value":  "$VCSAIP"
+                                                              },
+                                                              {
+                                                                  "Key":  "Enabled",
+                                                                  "Value":  true
+                                                              }
+                                                          ]
+                                        }
+                   }
+               ],
+    "ProfileTypeName":  "netdumpConfig_netdump_NetdumpProfile",
+    "ProfileVersion":  "$($spec.ApplyProfile.ProfileVersion)",
+    "Property":  null,
+    "Favorite":  true,
+    "ToBeMerged":  null,
+    "ToReplaceWith":  null,
+    "ToBeDeleted":  null,
+    "CopyEnableStatus":  null,
+    "Hidden":  null
+}
+"@
+($spec.ApplyProfile.network.property |Where{$_.PropertyName -eq "netdumpConfig_netdump_NetdumpProfile"}).Profile = ConvertFrom-Json $COREDUMPJSON 
+Write-Host "Completed setting Auto Deploy Best Practices Configuration"
+Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
+Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+
+###Set ESXi Local User Accounts Config
+##Reset all User Accounts to just root
+Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
+Write-Host "Resetting ESXi Local User Account Configuration to root Only"
+#Create User Policy
+$USERPARAMETERLIST = @()
+$USERPARAMETER = New-Object VMware.Vim.KeyAnyValue
+$USERPARAMETER.Key = "name"
+$USERPARAMETER.Value = "root"
+$USERPARAMETERLIST += $USERPARAMETER
+$USERPARAMETER = New-Object VMware.Vim.KeyAnyValue
+$USERPARAMETER.Key = "description"
+$USERPARAMETER.Value = "Administrator"
+$USERPARAMETERLIST += $USERPARAMETER
+$USERPARAMETER = New-Object VMware.Vim.KeyAnyValue
+$USERPARAMETER.Key = "posixId"
+$USERPARAMETER.Value = 0
+$USERPARAMETERLIST += $USERPARAMETER
+$USERPARAMETER = New-Object VMware.Vim.KeyAnyValue
+$USERPARAMETER.Key = "sshKey"
+$USERPARAMETER.Value = ""
+$USERPARAMETERLIST += $USERPARAMETER
+$USERPARAMETER = New-Object VMware.Vim.KeyAnyValue
+$USERPARAMETER.Key = "roleName"
+$USERPARAMETER.Value = "Admin"
+$USERPARAMETERLIST += $USERPARAMETER
+$USERPOLICYOPTION = New-Object VMware.Vim.PolicyOption
+$USERPOLICYOPTION.Id = "security.UserAccountProfile.UserPolicyOption"
+$USERPOLICYOPTION.Parameter = $USERPARAMETERLIST
+$USERPOLICY = New-Object VMware.Vim.ProfilePolicy
+$USERPOLICY.Id = "security.UserAccountProfile.UserPolicy"
+$USERPOLICY.PolicyOption = $USERPOLICYOPTION
+#Create User Password Policy
+$USERPASSWORDPOLICYOPTION = New-Object VMware.Vim.PolicyOption
+$USERPASSWORDPOLICYOPTION.Id = "security.UserAccountProfile.DefaultAccountPasswordUnchangedOption"
+$USERPASSWORDPOLICY = New-Object VMware.Vim.ProfilePolicy
+$USERPASSWORDPOLICY.Id = "security.UserAccountProfile.PasswordPolicy"
+$USERPASSWORDPOLICY.PolicyOption = $USERPASSWORDPOLICYOPTION
+#Create Policy Array
+$POLICYLIST = @()
+$POLICYLIST += $USERPOLICY
+$POLICYLIST += $USERPASSWORDPOLICY
+#Create User Password Profile
+$PROFILE = New-Object VMware.Vim.ProfileApplyProfileElement
+$PROFILE.Key = "1"
+$PROFILE.Enabled = $true
+$PROFILE.ProfileTypeName = "security_UserAccountProfile_UserAccountProfile"
+$PROFILE.ProfileVersion = $($spec.ApplyProfile.ProfileVersion)
+$PROFILE.Favorite = $true
+$PROFILE.Policy = $POLICYLIST
+#Reset all accounts to just Root
+((($spec.ApplyProfile.Property | Where {$_.PropertyName -eq "security_SecurityProfile_SecurityConfigProfile"}).Profile | Where {$_.ProfileTypeName -eq "security_SecurityProfile_SecurityConfigProfile"}).Property | Where {$_.PropertyName -eq "security_UserAccountProfile_UserAccountProfile"}).Profile = $PROFILE
+Write-Host "Completed Resetting ESXi Local User Account Configuration to root Only"
+Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
+Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+
+
+##Create User Accounts
+Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
+Write-Host "Creating ESXi Local User Account(s)"
+$N = 1
+$USERPROFILELIST = @()
+ForEach($USER in $LOCALUSERARRAY)
+{
+	#User Policy
+	$USERPARAMETERLIST = @()
+	$USERPARAMETER = New-Object VMware.Vim.KeyAnyValue
+	$USERPARAMETER.Key = "name"
+	$USERPARAMETER.Value = $USER.Name
+	$USERPARAMETERLIST += $USERPARAMETER
+	$USERPARAMETER = New-Object VMware.Vim.KeyAnyValue
+	$USERPARAMETER.Key = "description"
+	$USERPARAMETER.Value = $USER.Description
+	$USERPARAMETERLIST += $USERPARAMETER
+	$USERPARAMETER = New-Object VMware.Vim.KeyAnyValue
+	$USERPARAMETER.Key = "posixId"
+	$USERPARAMETER.Value = [int]$USER.posixId
+	$USERPARAMETERLIST += $USERPARAMETER
+	$USERPARAMETER = New-Object VMware.Vim.KeyAnyValue
+	$USERPARAMETER.Key = "sshKey"
+	$USERPARAMETER.Value = $USER.sshKey
+	$USERPARAMETERLIST += $USERPARAMETER
+	$USERPARAMETER = New-Object VMware.Vim.KeyAnyValue
+	$USERPARAMETER.Key = "roleName"
+	$USERPARAMETER.Value = $USER.roleName
+	$USERPARAMETERLIST += $USERPARAMETER
+	$USERPOLICYOPTION = New-Object VMware.Vim.PolicyOption
+	$USERPOLICYOPTION.Id = "security.UserAccountProfile.UserPolicyOption"
+	$USERPOLICYOPTION.Parameter = $USERPARAMETERLIST
+	$USERPOLICY = New-Object VMware.Vim.ProfilePolicy
+	$USERPOLICY.Id = "security.UserAccountProfile.UserPolicy"
+	$USERPOLICY.PolicyOption = $USERPOLICYOPTION
+	If($USER.PasswordPolicy -eq "Unchanged")
+	{
+		$USERPASSWORDPOLICYOPTION = New-Object VMware.Vim.PolicyOption
+		$USERPASSWORDPOLICYOPTION.Id = "security.UserAccountProfile.DefaultAccountPasswordUnchangedOption"
+		$USERPASSWORDPOLICY = New-Object VMware.Vim.ProfilePolicy
+		$USERPASSWORDPOLICY.Id = "security.UserAccountProfile.PasswordPolicy"
+		$USERPASSWORDPOLICY.PolicyOption = $USERPASSWORDPOLICYOPTION
+	}
+	If($USER.PasswordPolicy -eq "Input")
+	{
+		$USERPASSWORDPOLICYOPTION = New-Object VMware.Vim.PolicyOption
+		$USERPASSWORDPOLICYOPTION.Id = "security.UserAccountProfile.UserInputPasswordConfigOption"
+		$USERPASSWORDPOLICY = New-Object VMware.Vim.ProfilePolicy
+		$USERPASSWORDPOLICY.Id = "security.UserAccountProfile.PasswordPolicy"
+		$USERPASSWORDPOLICY.PolicyOption = $USERPASSWORDPOLICYOPTION
+	}
+	If($USER.PasswordPolicy -eq "Fixed")
+	{
+		#import xml password file
+		$MgrCreds = $null
+		$MgrCreds = $CREDSFOLDER+"\"+$USER.Name+"_local_account_cred.xml"
+		$ImportObject = Import-Clixml $MgrCreds
+		$SecureString = ConvertTo-SecureString -String $ImportObject.Password -Key $Key
+		$UserCredential = New-Object System.Management.Automation.PSCredential($ImportObject.UserName, $SecureString)
+		#Decrypt password
+		$bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($securestring)
+		$password = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr)
+		#Write-Host "Password is $password"
+		$USERPASSWORDVALUE = New-Object VMware.Vim.PasswordField
+		$USERPASSWORDVALUE.Value = $password
+		$password = $null
+		$USERPASSWORDPARAMETER = New-Object VMware.Vim.KeyAnyValue
+		$USERPASSWORDPARAMETER.Key = "password"
+		$USERPASSWORDPARAMETER.Value = $USERPASSWORDVALUE
+		$USERPASSWORDPOLICYOPTION = New-Object VMware.Vim.PolicyOption
+		$USERPASSWORDPOLICYOPTION.Id = "security.UserAccountProfile.FixedPasswordConfigOption"
+		$USERPASSWORDPOLICYOPTION.Parameter = $USERPASSWORDPARAMETER
+		$USERPASSWORDPOLICY = New-Object VMware.Vim.ProfilePolicy
+		$USERPASSWORDPOLICY.Id = "security.UserAccountProfile.PasswordPolicy"
+		$USERPASSWORDPOLICY.PolicyOption = $USERPASSWORDPOLICYOPTION
+	}
+	$POLICYLIST = @()
+	$POLICYLIST += $USERPOLICY
+	$POLICYLIST += $USERPASSWORDPOLICY
+	#Build User Password Profile
+	$PROFILE = New-Object VMware.Vim.ProfileApplyProfileElement
+	$PROFILE.Key = $N
+	$PROFILE.Enabled = $true
+	$PROFILE.ProfileTypeName = "security_UserAccountProfile_UserAccountProfile"
+	$PROFILE.ProfileVersion = $($spec.ApplyProfile.ProfileVersion)
+	$PROFILE.Favorite = $true
+	$PROFILE.Policy = $POLICYLIST
+	$USERPROFILELIST += $PROFILE
+	$N++
+}
+#Add All Profiles to User Settings (this replaces all existing users)
+If($USERPROFILELIST.Count -gt 0)
+{
+	Write-Host "User Profile List Creation Completed"
+	((($spec.ApplyProfile.Property | Where {$_.PropertyName -eq "security_SecurityProfile_SecurityConfigProfile"}).Profile | Where {$_.ProfileTypeName -eq "security_SecurityProfile_SecurityConfigProfile"}).Property | Where {$_.PropertyName -eq "security_UserAccountProfile_UserAccountProfile"}).Profile = $USERPROFILELIST
+}Else{
+	Write-Host "No user profiles list to update. Skipping"
+}
+Write-Host "Completed creating ESXi Local User Account(s)"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 
@@ -1823,7 +2486,7 @@ Write-Host "--------------------------------------------------------------------
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "Renaming Host Profile post Creation/Configuration"
 $PROFILEDATE = (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
-Get-VMHostProfile -Name (($CLUSTER.Name) + "_temp") | Set-VMHostProfile -Name (($CLUSTER.Name) + "_Cluster_" + $PROFILEDATE)
+Get-VMHostProfile -Name (($CLUSTER.Name) + "_temp") | Set-VMHostProfile -Name (($CLUSTER.Name) + "_gw" + ($VMHOST.ExtensionData.Config.Network.IpRouteConfig.DefaultGateway))
 Write-Host "Completed tenaming Host Profile post Creation/Configuration"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
@@ -1831,10 +2494,11 @@ Write-Host "--------------------------------------------------------------------
 ##Apply Host Profile to Cluster
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
-Write-Host "Applying All VMHosts in Cluster $CLUSTER to Host Profile"(($CLUSTER.Name) + "_Cluster_" + $PROFILEDATE) 
-$HOSTPROFILE = Get-VMHostProfile -Name (($CLUSTER.Name) + "_Cluster_" + $PROFILEDATE)
-Apply-VMHostProfile -AssociateOnly -Entity $CLUSTER -Profile $HOSTPROFILE -Confirm:$false
-Write-Host "Completed applying All VMHosts in Cluster $CLUSTER to Host Profile"(($CLUSTER.Name) + "_Cluster_" + $PROFILEDATE) 
+Write-Host "Applying All VMHosts in Cluster $CLUSTER to Host Profile"(($CLUSTER.Name) + "_gw" + ($VMHOST.ExtensionData.Config.Network.IpRouteConfig.DefaultGateway)) 
+$HOSTPROFILE = Get-VMHostProfile -Name (($CLUSTER.Name) + "_gw" + ($VMHOST.ExtensionData.Config.Network.IpRouteConfig.DefaultGateway))
+$VMHOSTAPPLYLIST = Get-Cluster $CLUSTER | Get-VMHost | Where {$_.ExtensionData.Config.Network.IpRouteConfig.DefaultGateway -eq ($VMHOST.ExtensionData.Config.Network.IpRouteConfig.DefaultGateway)}
+Apply-VMHostProfile -AssociateOnly -Entity $VMHOSTAPPLYLIST -Profile $HOSTPROFILE -Confirm:$false
+Write-Host "Completed applying All VMHosts in Cluster $CLUSTER to Host Profile"(($CLUSTER.Name) + "_gw" + ($VMHOST.ExtensionData.Config.Network.IpRouteConfig.DefaultGateway))
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 
