@@ -2,8 +2,8 @@
     .NOTES
 	===========================================================================
 	Created by:		Russell Hamker
-	Date:			June 9, 2021
-	Version:		1.3.0
+	Date:			June 11, 2021
+	Version:		1.3.2
 	Twitter:		@butch7903
 	GitHub:			https://github.com/butch7903
 	===========================================================================
@@ -2097,7 +2097,6 @@ Write-Host "Setting Auto Deploy Best Practices Configuration"
 If($SYSCACHEOPTION -eq "Stateless with HD Cache")
 {
 	Write-Host "Setting System Cache to 'Enable stateless caching on the host'"
-#Note Value Setting is designed for Cisco UCS
 $SYSTEMCACHEJSON = @"
 {
     "PropertyName":  "systemCache_caching_CachingProfile",
@@ -2145,7 +2144,6 @@ $SYSTEMCACHEJSON = @"
 If($SYSCACHEOPTION -eq "Stateful install on HD")
 {
 	Write-Host "Setting System Cache to 'Enable stateful installs on the host'"
-#Note Value Setting is designed for Cisco UCS
 $SYSTEMCACHEJSON = @"
 {
     "PropertyName":  "systemCache_caching_CachingProfile",
@@ -2517,6 +2515,50 @@ $EXPORTFILE = $pwd.path+"\Export\"+$EXPORTFILENAME
 Write-Host "Exporting Host Profile to VPF File to $EXPORTFILE"
 Export-VMHostProfile -FilePath $EXPORTFILE -Profile $HOSTPROFILE
 Write-Host "Completed exporting Host Profile to VPF File to $EXPORTFILE"
+Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
+Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+
+##Create Auto Deploy Rules
+Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
+Write-Host "Creating new Auto Deploy Settings"
+$AUTODEPLOYLIST = ($VMHOSTAPPLYLIST |Select Name).Name
+$A=@()
+ForEach($AUTODEPLOY in $AUTODEPLOYLIST)
+{
+	$t =@()
+	$t = $AUTODEPLOY.Substring(0, $AUTODEPLOY.IndexOf('.'))
+	$A += $t
+}
+$A[0] =  "hostname=" + $A[0]	#Add Pattern Type to first item in array
+$PATTERNLIST = $A -join ", "
+<#Not working yet
+$ZIP = read-host "Please provide the full path to the Manufacturer Offline Bundle (.Zip File from Dell, HPE, Cisco, etc.)
+Example: 
+E:\scripts_old\rhamker\Make_A_Custom_ESXi_Image\Export\Cisco-UCS-Custom-ESXi-70U1-16850804_4.1.2-b_custom_Apr222021_7.0.1-0.30.17551050\Cisco-UCS-Custom-ESXi-70U1-16850804_4.1.2-b_custom_Apr222021_7.0.1-0.30.17551050.zip
+"
+$MANUDEPOT = Add-EsxSoftwareDepot $ZIP
+$IMG = Get-ESXImageProfile | Select *
+Write-Host "ESX Image Profile Details"
+Write-Output $IMG
+#>
+Write-Host "Creating new Auto Deploy Rule"
+#$AUTODEPLOYRULE = New-DeployRule -Name ($HOSTPROFILE).Name -Pattern $PATTERNLIST -Item $IMG,$HOSTPROFILE,$CLUSTER
+$AUTODEPLOYRULE = New-DeployRule -Name ($HOSTPROFILE).Name -Pattern $PATTERNLIST -Item $HOSTPROFILE,$CLUSTER
+#Activate Auto Deploy Rule
+Write-Host "Setting new Auto Deploy Rule $AUTODEPLOYRULE to activated"
+#disabled, waiting for $IMG variable to work
+#Add-DeployRule $AUTODEPLOYRULE 
+Write-Host "Completed Creating new Auto Deploy Settings"
+Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
+Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+
+##Test Host Profile Compliance
+Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
+Write-Host "Checking VMHost Host Profile Compliance"
+Test-VMHostProfileCompliance -VMHost $VMHOSTAPPLYLIST
+Write-Host "Completed Checking VMHost Host Profile Compliance"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 
