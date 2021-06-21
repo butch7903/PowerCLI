@@ -2,8 +2,8 @@
     .NOTES
 	===========================================================================
 	Created by:		Russell Hamker
-	Date:			June 11, 2021
-	Version:		1.3.2
+	Date:			June 17, 2021
+	Version:		1.3.3
 	Twitter:		@butch7903
 	GitHub:			https://github.com/butch7903
 	===========================================================================
@@ -414,7 +414,8 @@ If(!$SYSLOGCSVFILEGET)
 	Write-Host "SYSLOG List CSV File not found"
 	$SYSLOGNAME = @()
 	$SYSLOGTEMPLIST = "" | Select SYSLOG, Site
-	$SYSLOGTEMPLIST.SYSLOG = Read-Host "Please provide a SYSLOG FQDN or IP for site $SITE"
+	$SYSLOGTEMPLIST.SYSLOG = Read-Host "Please provide a SYSLOG FQDN or IP for site $SITE
+	Example: elkvip.sv2.ironport.com"
 	$SYSLOGTEMPLIST.Site = $SITE
 	Write-Host "Syslog Site Selected is"($SYSLOGTEMPLIST.Site)
 	$SYSLOGNAME += $SYSLOGTEMPLIST
@@ -434,7 +435,8 @@ If($SYSLOGCSVFILEGET)
 		Write-Host "Site Syslog Server not found"
 		Write-Host "Creating New Record..."
 		$SYSLOGTEMPLIST = "" | Select SYSLOG, Site
-		$SYSLOGTEMPLIST.SYSLOG = Read-Host "Please provide a SYSLOG FQDN or IP"
+		$SYSLOGTEMPLIST.SYSLOG = Read-Host "Please provide a SYSLOG FQDN or IP
+		Example: loginsight.hamker.local"
 		$SYSLOGTEMPLIST.Site = $SITE 
 		Write-Host "Site Selected is:"
 		Write-Host $SYSLOGTEMPLIST.Site
@@ -937,7 +939,7 @@ If(!$MyCredential)
 {
 	Write-Host "Please Provide VCSA Administrator based Credentials for VCSA $VCSA"
 	$MyCredential = Get-Credential -Message "Please Provide VCSA Creds"
-	Write-Host "Credential UserName provided is:"$MyCredential.UserName
+	Write-Host "Credential Username provided is:"$MyCredential.UserName
 }
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
@@ -2521,35 +2523,44 @@ Write-Host "--------------------------------------------------------------------
 ##Create Auto Deploy Rules
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
-Write-Host "Creating new Auto Deploy Settings"
-$AUTODEPLOYLIST = ($VMHOSTAPPLYLIST |Select Name).Name
-$A=@()
-ForEach($AUTODEPLOY in $AUTODEPLOYLIST)
-{
-	$t =@()
-	$t = $AUTODEPLOY.Substring(0, $AUTODEPLOY.IndexOf('.'))
-	$A += $t
+CLS
+$CONFIRMATION = Read-Host "Would you like to create Auto Deploy Rules based on DNS hostname? (y/n)"
+IF($CONFIRMATION -eq 'y') {
+    Write-Host "Creating new Auto Deploy Settings"
+	$AUTODEPLOYLIST = ($VMHOSTAPPLYLIST |Select Name).Name
+	$A=@()
+	ForEach($AUTODEPLOY in $AUTODEPLOYLIST)
+	{
+		$t =@()
+		$t = $AUTODEPLOY.Substring(0, $AUTODEPLOY.IndexOf('.'))
+		$A += $t
+	}
+	$A[0] =  "hostname=" + $A[0]	#Add Pattern Type to first item in array
+	$PATTERNLIST = $A -join ", "
+	<#Not working yet
+	$ZIP = read-host "Please provide the full path to the Manufacturer Offline Bundle (.Zip File from Dell, HPE, Cisco, etc.)
+	Example: 
+	E:\scripts_old\rhamker\Make_A_Custom_ESXi_Image\Export\Cisco-UCS-Custom-ESXi-70U1-16850804_4.1.2-b_custom_Apr222021_7.0.1-0.30.17551050\Cisco-UCS-Custom-ESXi-70U1-16850804_4.1.2-b_custom_Apr222021_7.0.1-0.30.17551050.zip
+	"
+	$MANUDEPOT = Add-EsxSoftwareDepot $ZIP
+	$IMG = Get-ESXImageProfile | Select *
+	Write-Host "ESX Image Profile Details"
+	Write-Output $IMG
+	#>
+	Write-Host "Creating new Auto Deploy Rule"
+	#$AUTODEPLOYRULE = New-DeployRule -Name ($HOSTPROFILE).Name -Pattern $PATTERNLIST -Item $IMG,$HOSTPROFILE,$CLUSTER
+	$AUTODEPLOYRULE = New-DeployRule -Name ($HOSTPROFILE).Name -Pattern $PATTERNLIST -Item $HOSTPROFILE,$CLUSTER
+	<# 
+	#disabled, waiting for $IMG variable to work
+	#Activate Auto Deploy Rule
+	Write-Host "Setting new Auto Deploy Rule $AUTODEPLOYRULE to activated"
+	Add-DeployRule $AUTODEPLOYRULE
+	#>
+	Write-Host "Completed Creating new Auto Deploy Settings"
 }
-$A[0] =  "hostname=" + $A[0]	#Add Pattern Type to first item in array
-$PATTERNLIST = $A -join ", "
-<#Not working yet
-$ZIP = read-host "Please provide the full path to the Manufacturer Offline Bundle (.Zip File from Dell, HPE, Cisco, etc.)
-Example: 
-E:\scripts_old\rhamker\Make_A_Custom_ESXi_Image\Export\Cisco-UCS-Custom-ESXi-70U1-16850804_4.1.2-b_custom_Apr222021_7.0.1-0.30.17551050\Cisco-UCS-Custom-ESXi-70U1-16850804_4.1.2-b_custom_Apr222021_7.0.1-0.30.17551050.zip
-"
-$MANUDEPOT = Add-EsxSoftwareDepot $ZIP
-$IMG = Get-ESXImageProfile | Select *
-Write-Host "ESX Image Profile Details"
-Write-Output $IMG
-#>
-Write-Host "Creating new Auto Deploy Rule"
-#$AUTODEPLOYRULE = New-DeployRule -Name ($HOSTPROFILE).Name -Pattern $PATTERNLIST -Item $IMG,$HOSTPROFILE,$CLUSTER
-$AUTODEPLOYRULE = New-DeployRule -Name ($HOSTPROFILE).Name -Pattern $PATTERNLIST -Item $HOSTPROFILE,$CLUSTER
-#Activate Auto Deploy Rule
-Write-Host "Setting new Auto Deploy Rule $AUTODEPLOYRULE to activated"
-#disabled, waiting for $IMG variable to work
-#Add-DeployRule $AUTODEPLOYRULE 
-Write-Host "Completed Creating new Auto Deploy Settings"
+IF($CONFIRMATION -eq 'n') {
+	Write-Host "No Selected. Skipping creation of Auto Deploy Rules based on DNS hostname"
+}
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 
