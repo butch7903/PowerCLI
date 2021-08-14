@@ -2,8 +2,8 @@
     .NOTES
 	===========================================================================
 	Created by:		Russell Hamker
-	Date:			July 15,2021
-	Version:		1.0
+	Date:			August 10,2021
+	Version:		1.1
 	Twitter:		@butch7903
 	GitHub:			https://github.com/butch7903
 	===========================================================================
@@ -108,16 +108,17 @@ Write-Host "--------------------------------------------------------------------
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 $FILELISTNAMES = ($FILELIST | Select BaseName).BaseName
+$EXISTINGROLES = (get-Virole |select Name).Name #added 8/10/2021
 ForEach($FILE in $FILELIST)
 {
 	$ROLENAME = (($FILE).BaseName)
 	$ROLEPATH = ($FILE).FullName
 	Write-Host "Checking if Role $ROLENAME Exists"
-	IF($FILELISTNAMES -contains $ROLENAME)
+	IF($EXISTINGROLES -contains $ROLENAME)
 	{
 		Write-Host "Role $ROLENAME Already Exists, skipping..."
 	}
-	IF($FILELISTNAMES -notcontains $ROLENAME)
+	IF($EXISTINGROLES -notcontains $ROLENAME)
 	{
 		Write-Host "Role $ROLENAME not found"
 		Write-Host "Importing Role $ROLENAME to $VCSA"
