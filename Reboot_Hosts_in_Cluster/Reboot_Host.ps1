@@ -9,7 +9,7 @@
 	===========================================================================
 
 	.SYNOPSIS
-		This script will set downtime in icinga, place host into maintenance mode
+		This script will place host into maintenance mode,
 		reboot the host, and put it back into service.
 
 	.DESCRIPTION
@@ -145,122 +145,6 @@ Function Disconnect-VMSerialPort($VMLIST)
 #Disconnect-VMSerialPort (Get-VM $VMNAMEHERE)
 #Disconnect-VMSerialPort (Get-VMHost $VMHOSTHERE | Get-VM $VMNAMEHERE)
 
-Function Set-IcingaDowntime{
-[CmdletBinding()]
-param(
-	[Parameter(Mandatory=$true)]
-	[Boolean]$MatchExactName,
-	[Parameter(Mandatory=$true)]
-	[string]$HostToDT,
-	[Parameter(Mandatory=$true)]
-	[string]$Author,
-	[Parameter(Mandatory=$true)]
-	[string]$Comment,
-	[Parameter(Mandatory=$true)]
-	[datetime]$StartTime,
-	[Parameter(Mandatory=$true)]
-	[datetime]$EndTime,
-	[Parameter(Mandatory=$true)]
-	[Boolean]$Children,
-	[Parameter(Mandatory=$true)]
-	[Boolean]$AllServices
-) #end param
-
-# Allow TLS 1.2. Old powershell (.net) uses TLS 1.0 only. Icinga2 >2.10 needs TLS 1.2
-[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]'Ssl3,Tls,Tls11,Tls12'
-
-###Trust all certificates
-add-type @"
-    using System.Net;
-    using System.Security.Cryptography.X509Certificates;
-    public class TrustAllCertsPolicy : ICertificatePolicy {
-        public bool CheckValidationResult(
-            ServicePoint srvPoint, X509Certificate certificate,
-            WebRequest request, int certificateProblem) {
-            return true;
-        }
-    }
-"@
-[System.Net.ServicePointManager]::CertificatePolicy = New-Object TrustAllCertsPolicy
-
-#Set $Child
-If($Children -eq $False){$Child = "DowntimeNonTriggeredChildren"}
-If($Children -eq $True){$Child = "DowntimeTriggeredChildren"}
-
-#Set AllServices
-If($AllServices -eq $false){$Services = "false"}
-If($AllServices -eq $true){$Services = "true"}
-
-#Set Start/End Times
-$start_time = (Get-Date (Get-Date $StartTime).ToUniversalTime() -UFormat %s).split(".", 2)[0]
-$end_time =  (Get-Date (Get-Date $EndTime).ToUniversalTime() -UFormat %s).split(".", 2)[0]
-
-If($MatchExactName -eq $true)
-{
-$body = "{
-`n    `"type`": `"Host`", 
-`n    `"filter`": `"host.name == filterHost`",
-`n    `"filter_vars`": {
-`n        `"filterHost`": `"$HostToDT`"
-`n    }, 
-`n    `"start_time`": `"$start_time`", 
-`n    `"end_time`": `"$end_time`", 
-`n    `"author`": `"$Author`", 
-`n    `"comment`": `"$Comment`", 
-`n    `"fixed`": true,
-`n    `"child_options`": `"$Child`",
-`n    `"all_services`": $Services
-`n}"
-}
-
-If($MatchExactName -eq $false)
-{
-$body = "{
-`n    `"type`": `"Host`", 
-`n    `"filter`": `"match(`\`"*$HostToDT*`\`", host.name)`",
-`n    `"start_time`": `"$start_time`", 
-`n    `"end_time`": `"$end_time`", 
-`n    `"author`": `"$Author`", 
-`n    `"comment`": `"$Comment`", 
-`n    `"fixed`": true,
-`n    `"child_options`": `"$Child`",
-`n    `"all_services`": $Services
-`n}"
-}
-
-#Set Standard API Call Info
-$headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
-$headers.Add("Accept", "application/json")
-$headers.Add("Authorization", "Basic cGxhdG9wc19kdDpKRkR4OXNLc2lsUk1iMHB5bXU=")
-$headers.Add("Content-Type", "application/json")
-
-#Complete API Call
-$response = Invoke-RestMethod 'https://prod-mon-icinga-sv2-p0.ironport.com:5665/v1/actions/schedule-downtime' -Method 'POST' -Headers $headers -Body $body | ConvertTo-Json
-
-#Parse Response
-If($response)
-{
-	$ARRAY = @()
-	$RESPONESLIST = ($response |ConvertFrom-Json).Results | Sort Name
-	ForEach($RESP in $RESPONESLIST)
-	{
-		#Cleaning up response
-		$TEMP = "" | Select name,status,legacy_id,code,child_downtimes,services_downtimes
-		$TEMP.child_downtimes = $RESP.child_downtimes
-		$TEMP.code = $RESP.code
-		$TEMP.legacy_id = $RESP.legacy_id
-		$TEMP.name = ($RESP.name).Split('!')[0]
-		$TEMP.services_downtimes = $RESP.services_downtimes
-		$TEMP.status = ($RESP.status).Split("'")[0]
-		#Add Temp to Array
-		$ARRAY += $TEMP
-	}
-	#Output full response
-	Write-Output $ARRAY
-}Else{
-	Write-Host "$HostToDT not found in Icinga"
-}
-}
 
 ##Document Start Time
 $STARTTIME = Get-Date -format "MMM-dd-yyyy HH-mm-ss"
@@ -413,19 +297,6 @@ ForEach($VMHost in $VMHOSTLIST)
 	Write-Host "Entering Maintenance Mode on $VMHOST"
 	Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 	Set-VMHost $VMHOST -State maintenance -Evacuate | Out-Null
-	
-	##Setup Downtime on Host
-	#Set-IcingaDowntime -MatchExactName $true -Author "rhamker" -Comment "RFC-33450" -StartTime "06:30" -EndTime "10:00" -Children $true -HostToDT "dev-util-nap5-3.ironport.com"
-	$CURRENTDATE = Get-Date
-	#$HOUR = $CURRENTDATE.Hour
-	#$MIN = $CURRENTDATE.Minute
-	#$STARTTIME = "$HOUR:$MIN"
-	$STARTTIME = [datetime]$currentdate
-	$ENDTIME = [datetime]$STARTTIME.AddHours(2)
-	#$ENDHOUR = $HOUR.Add
-	Write-Host "Setting Icinga Downtime for $VMHOST"
-	Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
-	Set-IcingaDowntime -MatchExactName $true -Author ($MyCredential.UserName) -Comment $RFC -StartTime $STARTTIME -EndTime $ENDTIME -Children $true -$AllServices $true -HostToDt ($VMHOST.Name)
 	
 	##Reboot Host
 	Write-Host "Rebooting VMHost $VMHOST"
