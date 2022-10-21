@@ -2,8 +2,8 @@
     .NOTES
 	===========================================================================
 	Created by:		Russell Hamker
-	Date:			January 13,2021
-	Version:		2.2
+	Date:			October 21,2022
+	Version:		3.1
 	Twitter:		@butch7903
 	GitHub:			https://github.com/butch7903
 	===========================================================================
@@ -71,24 +71,23 @@ $STARTTIMESW = [Diagnostics.Stopwatch]::StartNew()
 
 #Type in User input info
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
-$ZIP = read-host "Please provide the full path to the Manufacturer Offline Bundle (.Zip File from Dell, HPE, Cisco, etc.)
+$ZIP = read-host "Please provide the full file path to the Manufacturer Offline Bundle (.Zip File from Dell, HPE, Cisco, VMware, etc.)
 Example: 
-D:\PowerCLIScripts\Create_Custom_Vendor_VIB_Offline_bundle_and_iso\ImagesAndPatches\Images\Gen9\VMware-ESXi-6.7.0-Update3-16713306-HPE-Gen9plus-670.U3.10.6.0.83-Oct2020-depot.zip
-D:\PowerCLIScripts\Create_Custom_Vendor_VIB_Offline_bundle_and_iso\ImagesAndPatches\Images\Synergy\VMware-ESXi-6.7.0-Update3-15160138-HPE-Synergy-670.U3.10.5.6.11-May2020-depot.zip
+C:\VMware\ESXi\Make_A_Custom_ESXi_Image\ESXi_7\VMware-ESXi-7.0.3d-19482537-Custom-Cisco-4.2.2-a-depot.zip
+C:\VMware\ESXi\Make_A_Custom_ESXi_Image\ESXi_7\VMware-ESXi-7.0U3g-20328353-depot.zip
 "
 $ZIPFILE = Split-Path $ZIP -leaf
 $ZIPFILE
-$ZIPPATCHFOLDER = read-host "Please provide the full path to the HTTPS Address or a FOLDER of the Online/Offline bundles needed to update the Manufacturer offline bundle
-Examples: 
+$ZIPPATCHFOLDER = read-host "Please provide the full path to the FOLDER or HTTPS Address of the Online/Offline bundles needed to update the Manufacturer offline bundle
+Examples:
+C:\VMware\ESXi\Make_A_Custom_ESXi_Image\ESXi_7_Updates
 https://hostupdate.vmware.com/software/VUM/PRODUCTION/main/vmw-depot-index.xml
-D:\PowerCLIScripts\Create_Custom_Vendor_VIB_Offline_bundle_and_iso\ImagesAndPatches\Patches\VMwarePatches
 "
-$MANUFACTURERBUNDLE = read-host "Please provide the full path to the HTTP(S) Address or Folder of the Online/Offline bundles needed to update the Manufacturer Drivers/Tools.
+$MANUFACTURERBUNDLE = read-host "Please provide the full path to the Folder or HTTP(S) Address of the Online/Offline bundles needed to update the Manufacturer Drivers/Tools.
 Click Enter if you do not wish to include this.
 Examples:
+C:\VMware\ESXi\Make_A_Custom_ESXi_Image\ESXi_7_Drivers
 https://vibsdepot.hpe.com/hpe/oct2020/index.xml
-D:\PowerCLIScripts\Create_Custom_Vendor_VIB_Offline_bundle_and_iso\ImagesAndPatches\Patches\Gen9Patches
-D:\PowerCLIScripts\Create_Custom_Vendor_VIB_Offline_bundle_and_iso\ImagesAndPatches\Patches\SynergyPatches
 "
 #https://vibsdepot.hpe.com/hpe/oct2020/local-metadata-hpe-esxi-drv-bundles-670.U3.10.6.0.zip
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
@@ -122,7 +121,16 @@ Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "Adding Software Depot/Offline Bundle: 
 $ZIP"
 $MANUDEPOT = Add-EsxSoftwareDepot $ZIP
-$ESXIMAGEPROFILE = Get-EsxImageProfile |select * #Gets details of what is in the $ZIP file
+$ESXIMAGEPROFILE = Get-EsxImageProfile | select * #Gets details of what is in the $ZIP file
+If($ESXIMAGEPROFILE.count -gt 1)
+{
+	Write-Host "Image Profile found more than 1 image profile"
+	$ESXIMAGEPROFILE = Get-EsxImageProfile | where {$_.name -like "*standard"} | Sort Name
+	If($ESXIMAGEPROFILE.count -gt 1)
+	{
+		$ESXIMAGEPROFILE = $ESXIMAGEPROFILE[0]
+	}
+}
 Write-Host "Listing Manufacturer's ESXi Image Profile:"
 $ESXIMAGEPROFILE
 $ORIGINALVIBLIST = Get-EsxSoftwarePackage | Sort Name
@@ -229,28 +237,46 @@ Write-Host "--------------------------------------------------------------------
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "Creating new ESX Image Profile"
+Function Remove-InvalidFileNameChars {
+	param(
+	  [Parameter(Mandatory=$true,
+		Position=0,
+		ValueFromPipeline=$true,
+		ValueFromPipelineByPropertyName=$true)]
+	  [String]$Name
+	)
+  
+	$invalidChars = [IO.Path]::GetInvalidFileNameChars() -join ''
+	$re = "[{0}]" -f [RegEx]::Escape($invalidChars)
+	return ($Name -replace $re)
+  }
+
+$IMAGEVENDOR = ((($ESXIMAGEPROFILE[0].vendor -replace ',','') -replace '\s','') -replace '\.','' | Out-String ) | Remove-InvalidFileNameChars
+
 If($ESXIMAGEPROFILE.Description)
 {
-	$ESXIMAGEPROFILEDescription	= $ESXIMAGEPROFILE.Description
+	$ESXIMAGEPROFILEDescription	= ($ESXIMAGEPROFILE[0].Description | Out-String)
 }Else{
-	$ESXIMAGEPROFILEDescription	= "$ESXIMAGEPROFILE.vendor Image Based On $ESXIMAGEPROFILE.Name"
+	$ESXIMAGEPROFILEDescription	= ("$IMAGEVENDOR Image Based On $ESXIMAGEPROFILE[].Name" | Out-String)
 }
+
 If($VIBLISTALTERED)
 {
 	Write-Host "Creating New ESX Image Profile Based on the Altered VIB List (Unused VIBs were removed)"
 	$EDITION = Get-Date -format "MMMddyyyy"
-	$NewProfileName = ($ESXIMAGEPROFILE.Name + "_custom_" + $EDITION)
+	$NewProfileName = ($IMAGEVENDOR + "_custom_" + $EDITION)
+	Write-Host "Profile name will be $NewProfileName"
 	$NEWESXIMAGEPROFILE = New-EsxImageProfile -NewProfile $NewProfileName -SoftwarePackage $VIBLISTALTERED `
-    -Vendor $ESXIMAGEPROFILE.Vendor  -AcceptanceLevel $ESXIMAGEPROFILE.AcceptanceLevel -Description $ESXIMAGEPROFILEDescription `
+    -Vendor $IMAGEVENDOR -AcceptanceLevel $ESXIMAGEPROFILE.AcceptanceLevel -Description $ESXIMAGEPROFILEDescription `
     -ErrorAction Stop -ErrorVariable CreationError
 	
 	$ESXIMAGEVERSION = ($VIBLISTALTERED | Where {$_.Name -like "esx-base"}).Version
 }Else{
 	Write-Host "Creating New ESX Image Profile Based on the Unique/Newest VIB List (No unused VIBs were removed)"
 	$EDITION = Get-Date -format "MMMddyyyy"
-	$NewProfileName = ($ESXIMAGEPROFILE.Name + "_custom_" + $EDITION)
+	$NewProfileName = ($IMAGEVENDOR + "_custom_" + $EDITION)
 	$NEWESXIMAGEPROFILE = New-EsxImageProfile -NewProfile $NewProfileName -SoftwarePackage $VIBLIST `
-    -Vendor $ESXIMAGEPROFILE.Vendor  -AcceptanceLevel $ESXIMAGEPROFILE.AcceptanceLevel -Description $ESXIMAGEPROFILEDescription `
+    -Vendor $IMAGEVENDOR -AcceptanceLevel $ESXIMAGEPROFILE.AcceptanceLevel -Description $ESXIMAGEPROFILEDescription `
     -ErrorAction Stop -ErrorVariable CreationError
 	
 	$ESXIMAGEVERSION =  ($VIBLIST  | Where {$_.Name -like "esx-base"}).Version
