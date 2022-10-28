@@ -2,8 +2,8 @@
     .NOTES
 	===========================================================================
 	Created by:		Russell Hamker
-	Date:			October 21,2022
-	Version:		3.1
+	Date:			October 28,2022
+	Version:		3.2
 	Twitter:		@butch7903
 	GitHub:			https://github.com/butch7903
 	===========================================================================
@@ -19,6 +19,8 @@
 	.NOTES
 	Based on 
 	https://blogs.vmware.com/vsphere/2017/05/apply-latest-vmware-esxi-security-patches-oem-custom-images-visualize-differences.html
+	
+	10-28-2023 Added Fix for ESXi 8 issues with ARM VIBs (ESXIO)
 #>
 
 ##Check if Modules are installed, if so load them, else install them
@@ -71,22 +73,28 @@ $STARTTIMESW = [Diagnostics.Stopwatch]::StartNew()
 
 #Type in User input info
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+Write-Host "Specify ESXi Zip Bundle" -ForegroundColor Yellow
 $ZIP = read-host "Please provide the full file path to the Manufacturer Offline Bundle (.Zip File from Dell, HPE, Cisco, VMware, etc.)
 Example: 
 C:\VMware\ESXi\Make_A_Custom_ESXi_Image\ESXi_7\VMware-ESXi-7.0.3d-19482537-Custom-Cisco-4.2.2-a-depot.zip
 C:\VMware\ESXi\Make_A_Custom_ESXi_Image\ESXi_7\VMware-ESXi-7.0U3g-20328353-depot.zip
+C:\VMware\ESXi\Make_A_Custom_ESXi_Image\ESXi_8\VMware-ESXi-8.0-20513097-depot.zip
 "
 $ZIPFILE = Split-Path $ZIP -leaf
 $ZIPFILE
+Write-Host "Specify ESXi folder of ESXi Patches/VMware Tools" -ForegroundColor Yellow
 $ZIPPATCHFOLDER = read-host "Please provide the full path to the FOLDER or HTTPS Address of the Online/Offline bundles needed to update the Manufacturer offline bundle
 Examples:
 C:\VMware\ESXi\Make_A_Custom_ESXi_Image\ESXi_7_Updates
+C:\VMware\ESXi\Make_A_Custom_ESXi_Image\ESXi_8_Updates
 https://hostupdate.vmware.com/software/VUM/PRODUCTION/main/vmw-depot-index.xml
 "
+Write-Host "Specify Drivers Folder" -ForegroundColor Yellow
 $MANUFACTURERBUNDLE = read-host "Please provide the full path to the Folder or HTTP(S) Address of the Online/Offline bundles needed to update the Manufacturer Drivers/Tools.
 Click Enter if you do not wish to include this.
 Examples:
 C:\VMware\ESXi\Make_A_Custom_ESXi_Image\ESXi_7_Drivers
+C:\VMware\ESXi\Make_A_Custom_ESXi_Image\ESXi_8_Drivers
 https://vibsdepot.hpe.com/hpe/oct2020/index.xml
 "
 #https://vibsdepot.hpe.com/hpe/oct2020/local-metadata-hpe-esxi-drv-bundles-670.U3.10.6.0.zip
@@ -209,6 +217,27 @@ Write-Output $VIBLIST.count
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 
+#Remove ESXIO VIBS for ESXI 8.0
+Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
+$ESXIMAGEVERSION =  ($VIBLIST  | Where {$_.Name -like "esx-base"}).Version
+If($ESXIMAGEVERSION -like "8.0.*")
+{
+	Write-Host "ESXi 8.0 Detected. Removing ESXIO (ARM) VIBs" -ForegroundColor Yellow 
+	Write-Host "(If you don't do this for x86/x64 ESXi 8, you will not be able to make a custom Image)" -ForegroundColor Yellow 
+	$VIBLISTALTERED = $VIBLIST | Where {$_.Name -NotLike "*esxio*" } | sort Name
+	Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
+	Write-Host "Updated VIB List for New ESX Image Profile will include (Unused VIBs were removed):"
+	Write-Output $VIBLISTALTERED | ft
+	Write-Host "Updated VIB Count for New ESX Image Profile (Unused VIBs were removed):"
+	Write-Output $VIBLISTALTERED.count
+	Write-Host "Removed ESXi 8 ESXIO VIBS from Export List" -ForegroundColor Yellow
+	Write-Host "Press Enter to continue this PowerShell Script" -ForegroundColor Yellow 
+	PAUSE
+}
+Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
+Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+
 #Removing Unneeded VIBs
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
@@ -216,7 +245,7 @@ Write-Host "Removing unused/needed VIBs"
 $UNUSEDVIBSCSVFILE = Read-Host "Please provide the full path to the CSV file that contains the list of VIBs to remove. If you do not
 Wish to provide a list, simply hit enter to continue.
 Example: 
-D:\PowerCLIScripts\Create_Custom_Vendor_VIB_Offline_bundle_and_iso\VIBStoRemoveList.csv
+C:\VMware\ESXi\Make_A_Custom_ESXi_Image\ESXi_8_ESXIO-List.csv
 "
 If($UNUSEDVIBSCSVFILE)
 {
