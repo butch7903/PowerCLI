@@ -217,13 +217,14 @@ Write-Output $VIBLIST.count
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 
+<# Commented out because of this not being supported by VMware
 #Remove ESXIO VIBS for ESXI 8.0
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 $ESXIMAGEVERSION =  ($VIBLIST  | Where {$_.Name -like "esx-base"}).Version
 If($ESXIMAGEVERSION -like "8.0.*")
 {
-	Write-Host "ESXi 8.0 Detected. Removing ESXIO (ARM) VIBs" -ForegroundColor Yellow 
+	Write-Host "ESXi 8.0 Detected. Removing ESXIO (DPU) VIBs" -ForegroundColor Yellow 
 	Write-Host "(If you don't do this for x86/x64 ESXi 8, you will not be able to make a custom Image)" -ForegroundColor Yellow 
 	$VIBLISTALTERED = $VIBLIST | Where {$_.Name -NotLike "*esxio*" } | sort Name
 	Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
@@ -237,6 +238,7 @@ If($ESXIMAGEVERSION -like "8.0.*")
 }
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+#>
 
 #Removing Unneeded VIBs
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
