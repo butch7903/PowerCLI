@@ -2,8 +2,8 @@
     .NOTES
 	===========================================================================
 	Created by:		Russell Hamker
-	Date:			October 28,2022
-	Version:		3.2
+	Date:			November 30,2022
+	Version:		3.3
 	Twitter:		@butch7903
 	GitHub:			https://github.com/butch7903
 	===========================================================================
@@ -20,8 +20,14 @@
 	Based on 
 	https://blogs.vmware.com/vsphere/2017/05/apply-latest-vmware-esxi-security-patches-oem-custom-images-visualize-differences.html
 	
-	10-28-2023 Added Fix for ESXi 8 issues with ARM VIBs (ESXIO)
+	3.2 - 10-28-2023 Added Fix for ESXi 8 issues with ARM VIBs (ESXIO)
+	3.3 - 11-30-2023 Added Validation for VMware PowerCLI Version 13 and Python Checks
 #>
+
+##Set PowerShell Window Settings
+$pshost = get-host
+$pswindow = $pshost.ui.rawui
+$pswindow.windowtitle = "Creating VMware Offline Bundle and ISO"
 
 ##Check if Modules are installed, if so load them, else install them
 if (Get-InstalledModule -Name VMware.PowerCLI -MinimumVersion 11.4) {
@@ -63,6 +69,119 @@ if (Get-InstalledModule -Name VMware.PowerCLI -MinimumVersion 11.4) {
 	Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 	#Clear
 }
+
+Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+Write-Host "Validating VMware PowerCLI Version and Python Pre-Reqs"
+$POWERCLIVER = Get-InstalledModule VMware.PowerCLI | Select Name, Version
+If($POWERCLIVER.Version -gt 12.9)
+{
+	Write-Host "VMware PowerCLI Version Greater than 12.9 Detected..."
+	Write-Host "Validating Python is Configured Correctly..."
+	$PYPATH = Get-PowerCLIConfiguration | Select Scope,PythonPath | Where {$_.Scope -eq 'User'}
+	If(!$PYPATH.PythonPath)
+	{
+		Write-Host "Python Path Not Set" -ForegroundColor Red
+		Write-Host "Please follow VMware Documentation to install Python and configure the PythonPath Setting" -ForegroundColor Yellow
+		Write-Host "https://developer.vmware.com/docs/15315/powercli-user-s-guide/GUID-9081EBAF-BF85-48B1-82A0-D1C49F3FF1E8.html" -ForegroundColor Yellow
+		Write-Host "https://blogs.vmware.com/PowerCLI/2022/11/powercli-13-is-now-ga.html" -ForegroundColor Yellow
+	}
+	If ($IsWindows -or $ENV:OS)
+	{
+		Write-Host "Windows OS Detected..."
+		If($PYPATH.PythonPath -notlike "*python.exe")
+		{
+			Write-Host "PythonPath is not correctly set..." -ForegroundColor Red
+			Write-Host "Please follow VMware Article to properly Install Python and set PythonPath" -ForegroundColor Red
+			Write-Host "Path should be similar to C:\Program Files\Python\python.exe" -ForegroundColor Green
+			Write-Host "Command to set path is like below. Please run this with administrative Powershell rights to set for AllUsers" -ForegroundColor Green
+			Write-Host "Set-PowerCLIConfiguration -PythonPath "C:\Program Files\Python\python.exe" -Scope AllUsers -Confirm:$false" -ForegroundColor Green
+			Write-Host "Set-PowerCLIConfiguration -PythonPath "C:\Program Files\Python\python.exe" -Scope User -Confirm:$false" -ForegroundColor Green
+			Write-Host "https://vdc-repo.vmware.com/vmwb-repository/dcr-public/9619cb6d-3975-4bff-aa1f-0e785283a1a9/58d0925b-e15d-4803-bbd4-eb314dd165b0/GUID-EB16871E-D52B-4B46-9675-241AD42C1BE6.html" -ForegroundColor Yellow
+			Write-Host "https://blogs.vmware.com/PowerCLI/2022/11/powercli-13-is-now-ga.html" -ForegroundColor Yellow
+			PAUSE
+			EXIT
+		}Else{
+			$PATHTEST = Test-Path $PYPATH.PythonPath
+			If($PATHTEST -eq $true)
+			{
+				Write-Host "VMware PowerCLI Python Path is set to: $($PYPATH.PythonPath)" -ForegroundColor Green
+				Write-Host "File Path has Tested True" -ForegroundColor Green
+				Write-Host "VMware PowerCLI PythonPath was previously set successfully, continuing..." -ForegroundColor Green
+			}Else{
+				Write-Host "PythonPath is set, but not properly installed" -ForegroundColor Red
+				Write-Host "Please Install Python per VMware Documentation:" -ForegroundColor Yellow
+				Write-Host "https://vdc-repo.vmware.com/vmwb-repository/dcr-public/9619cb6d-3975-4bff-aa1f-0e785283a1a9/58d0925b-e15d-4803-bbd4-eb314dd165b0/GUID-9081EBAF-BF85-48B1-82A0-D1C49F3FF1E8.html#GUID-9081EBAF-BF85-48B1-82A0-D1C49F3FF1E8"  -ForegroundColor Yellow
+				PAUSE
+				EXIT
+			}
+		}
+	}ElseIf ($IsLinux -or $ENV:OS)
+	{
+		Write-Host "Linux OS Detected..."
+		If($PYPATH.PythonPath -notlike "/usr/bin/python3*")
+		{
+			Write-Host "PythonPath is not correctly set..." -ForegroundColor Red
+			Write-Host "Please follow VMware Article to properly Install Python and set PythonPath" -ForegroundColor Red
+			Write-Host "Follow commands to install Python:" -ForegroundColor Yellow
+			Write-Host "sudo apt-get install -y python3" -ForegroundColor Yellow
+			Write-Host "sudo apt-get install -y pip" -ForegroundColor Yellow
+			Write-Host "pip install six psutil lxml pyopenssl" -ForegroundColor Yellow
+			Write-Host "Path should be similar to /usr/bin/python3" -ForegroundColor Green
+			Write-Host "Command to set path is like below. Please run this with administrative Powershell rights to set for AllUsers" -ForegroundColor Green
+			Write-Host "Set-PowerCLIConfiguration -PythonPath "/usr/bin/python3" -Scope AllUsers -Confirm:$false" -ForegroundColor Green
+			Write-Host "Set-PowerCLIConfiguration -PythonPath "/usr/bin/python3" -Scope User -Confirm:$false" -ForegroundColor Green
+			Write-Host "https://vdc-repo.vmware.com/vmwb-repository/dcr-public/9619cb6d-3975-4bff-aa1f-0e785283a1a9/58d0925b-e15d-4803-bbd4-eb314dd165b0/GUID-101A5D2A-6BEB-43B0-8328-3B2F9F80C628.html" -ForegroundColor Yellow
+			Write-Host "https://blogs.vmware.com/PowerCLI/2022/11/powercli-13-is-now-ga.html" -ForegroundColor Yellow
+			PAUSE
+			EXIT
+		}Else{
+			$PATHTEST = Test-Path $PYPATH.PythonPath
+			If($PATHTEST -eq $true)
+			{
+				Write-Host "VMware PowerCLI Python Path is set to: $($PYPATH.PythonPath)" -ForegroundColor Green
+				Write-Host "File Path has Tested True" -ForegroundColor Green
+				Write-Host "VMware PowerCLI PythonPath was previously set successfully, continuing..." -ForegroundColor Green
+			}Else{
+				Write-Host "PythonPath is set, but not properly installed" -ForegroundColor Red
+				Write-Host "Please Install Python per VMware Documentation:" -ForegroundColor Yellow
+				Write-Host "https://vdc-repo.vmware.com/vmwb-repository/dcr-public/9619cb6d-3975-4bff-aa1f-0e785283a1a9/58d0925b-e15d-4803-bbd4-eb314dd165b0/GUID-9081EBAF-BF85-48B1-82A0-D1C49F3FF1E8.html#GUID-9081EBAF-BF85-48B1-82A0-D1C49F3FF1E8"  -ForegroundColor Yellow
+				PAUSE
+				EXIT
+			}
+		}
+	}ElseIf ($IsMacOS -or $ENV:OS)
+	{
+		Write-Host "macOS Detected..."
+		If($PYPATH.PythonPath -notlike "/usr/bin/python3*")
+		{
+			Write-Host "PythonPath is not correctly set..." -ForegroundColor Red
+			Write-Host "Please follow VMware Article to properly set PythonPath" -ForegroundColor Red
+			Write-Host "Path should be similar to /usr/bin/python3" -ForegroundColor Yellow
+			Write-Host "Command to set path is like below. Please run this with administrative Powershell rights to set for AllUsers" -ForegroundColor Green
+			Write-Host "Set-PowerCLIConfiguration -PythonPath "/usr/bin/python3" -Scope AllUsers -Confirm:$false" -ForegroundColor Green
+			Write-Host "Set-PowerCLIConfiguration -PythonPath "/usr/bin/python3" -Scope User -Confirm:$false" -ForegroundColor Green
+			Write-Host "https://vdc-repo.vmware.com/vmwb-repository/dcr-public/9619cb6d-3975-4bff-aa1f-0e785283a1a9/58d0925b-e15d-4803-bbd4-eb314dd165b0/GUID-F0405EDE-45CE-4DE4-A52A-5C458B984392.html" -ForegroundColor Yellow
+			Write-Host "https://blogs.vmware.com/PowerCLI/2022/11/powercli-13-is-now-ga.html" -ForegroundColor Yellow
+			PAUSE
+			EXIT
+		}Else{
+			$PATHTEST = Test-Path $PYPATH.PythonPath
+			If($PATHTEST -eq $true)
+			{
+				Write-Host "VMware PowerCLI Python Path is set to: $($PYPATH.PythonPath)" -ForegroundColor Green
+				Write-Host "File Path has Tested True" -ForegroundColor Green
+				Write-Host "VMware PowerCLI PythonPath was previously set successfully, continuing..." -ForegroundColor Green
+			}Else{
+				Write-Host "PythonPath is set, but not properly installed" -ForegroundColor Red
+				Write-Host "Please Install Python per VMware Documentation:" -ForegroundColor Yellow
+				Write-Host "https://vdc-repo.vmware.com/vmwb-repository/dcr-public/9619cb6d-3975-4bff-aa1f-0e785283a1a9/58d0925b-e15d-4803-bbd4-eb314dd165b0/GUID-9081EBAF-BF85-48B1-82A0-D1C49F3FF1E8.html#GUID-9081EBAF-BF85-48B1-82A0-D1C49F3FF1E8"  -ForegroundColor Yellow
+				PAUSE
+				EXIT
+			}
+		}
+	}
+}
+Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 
 ##Get Current Path
 $pwd = pwd
