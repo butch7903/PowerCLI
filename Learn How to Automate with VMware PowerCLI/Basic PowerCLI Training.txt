@@ -1,0 +1,78 @@
+Name: Russ Hamker
+Title: VMware Enterprise Architect
+Bio: VMUG Leader, SysAdmin. Automation Enthusiast. VMware vExpert and Tanzu Vanguard.
+Twitter Handle: @butch7903
+All my Info: http://linktr.ee/russellhamker 
+
+PowerShell Info Overview
+-PowerShell is the programming language invented by Microsoft. VMware took great interest do to vCenter running on Windows back in the day.
+-PowerShell converts API calls to commandlets
+-PowerShell modules are a set of commandlets that allow you to do things
+Examples:
+-Get
+-Set
+-Remove
+-Restart
+
+Install PowerCLI
+Install-Module VMware.PowerCLI -AllowClobber -Force -Scope AllUsers -SkipPublisherCheck
+
+Validate PowerCLI Version
+Get-InstalledModule VMware.PowerCLI | Select Name, Version
+
+New Requirement for Python for PowerCLI
+https://vdc-repo.vmware.com/vmwb-repository/dcr-public/9619cb6d-3975-4bff-aa1f-0e785283a1a9/58d0925b-e15d-4803-bbd4-eb314dd165b0/GUID-9081EBAF-BF85-48B1-82A0-D1C49F3FF1E8.html
+
+Set Python Setttings for PowerCLI
+Set-PowerCLIConfiguration -PythonPath "C:\Program Files\Python\python.exe" -Scope AllUsers
+
+Validate Python Settings for PowerCLI
+Get-PowerCLIConfiguration | Select Scope,PythonPath | Where {$_.Scope -eq 'AllUsers'}
+
+Uninstall PowerCLI
+Uninstall-Module VMware.Powercli
+
+Import Module
+Import-Module VMware.PowerCLI
+
+Variables
+-PowerShell allows you to do variables
+$vcsa = "hamvc01.hamker.local"
+$creds = Get-Credential
+
+-Demo connecting to VCSA
+Connect-VIServer $vcsa -credential $creds
+
+-Demo getting list of hosts
+Get-VMHost
+Get-VMHost -Name hamesxi01*
+$vmhost = Get-VMHost -Name hamesxi01*
+$vmhost | select *
+$vmhostinfo = $vmhost | select Name, Model, Version, Build
+
+-Talk about ExtensionData
+$vmhost.ExtensionData
+
+-Talk about Sorting
+Get-VMHost | Sort Name
+Get-VMHost | Sort CpuUsageMhz
+
+-Demo getting list of VMs
+Get-VM | Sort Name
+
+-Talk about where
+Get-VM | where {$_.PowerState -eq "PoweredOn"} | Sort Name
+
+-Unmount ISOs
+Get-VM | Sort Name | Get-CDDrive | where {$_.IsoPath -ne $null} | Set-CDDrive -NoMedia -Confirm:$False
+
+Go Over Basic Scripting concepts
+-Use Github
+-Use Visual Studio for Code/NotePad++
+-PS1 files info
+-Make your code cookie cutter
+-Have a template PS1 file
+
+-Demo code from 1 of my scripts if there is time
+
+
