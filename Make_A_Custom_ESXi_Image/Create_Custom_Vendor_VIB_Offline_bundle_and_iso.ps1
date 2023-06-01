@@ -1,27 +1,28 @@
 <#
-    .NOTES
-	===========================================================================
+.NOTES
 	Created by:		Russell Hamker
-	Date:			November 30,2022
-	Version:		3.3
+	Date:			June 1,2023
+	Version:		3.4
 	Twitter:		@butch7903
 	GitHub:			https://github.com/butch7903
-	===========================================================================
 
-	.SYNOPSIS
-		This script will update an offline bundle/Software Depot provided 
-		by a hardware vendor such as HPE, Dell, Cisco, Etc..
+.SYNOPSIS
+	This script will update an offline bundle/Software Depot provided 
+	by a hardware vendor such as HPE, Dell, Cisco, Etc..
 
 
-	.DESCRIPTION
-		Use this script to update the offline bundle provided by vendors	
-
-	.NOTES
+.DESCRIPTION
+	Use this script to update the offline bundle provided by vendors	
 	Based on 
 	https://blogs.vmware.com/vsphere/2017/05/apply-latest-vmware-esxi-security-patches-oem-custom-images-visualize-differences.html
-	
+
 	3.2 - 10-28-2023 Added Fix for ESXi 8 issues with ARM VIBs (ESXIO)
 	3.3 - 11-30-2023 Added Validation for VMware PowerCLI Version 13 and Python Checks
+	3.4 - 6-1-2023 Fixed issues with PowerShell so it can run on PowerShell Core
+
+.EXAMPLE
+	#Example 1
+	./Create_Custom_Vendor_VIB_Offline_bundle_and_iso.ps1
 #>
 
 ##Set PowerShell Window Settings
@@ -72,12 +73,12 @@ if (Get-InstalledModule -Name VMware.PowerCLI -MinimumVersion 11.4) {
 
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host "Validating VMware PowerCLI Version and Python Pre-Reqs"
-$POWERCLIVER = Get-InstalledModule VMware.PowerCLI | Select Name, Version
+$POWERCLIVER = Get-InstalledModule VMware.PowerCLI | Select-Object Name, Version
 If($POWERCLIVER.Version -gt 12.9)
 {
 	Write-Host "VMware PowerCLI Version Greater than 12.9 Detected..."
 	Write-Host "Validating Python is Configured Correctly..."
-	$PYPATH = Get-PowerCLIConfiguration | Select Scope,PythonPath | Where {$_.Scope -eq 'User'}
+	$PYPATH = Get-PowerCLIConfiguration | Select-Object Scope,PythonPath | Where {$_.Scope -eq 'User'}
 	If(!$PYPATH.PythonPath)
 	{
 		Write-Host "Python Path Not Set" -ForegroundColor Red
@@ -248,11 +249,11 @@ Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "Adding Software Depot/Offline Bundle: 
 $ZIP"
 $MANUDEPOT = Add-EsxSoftwareDepot $ZIP
-$ESXIMAGEPROFILE = Get-EsxImageProfile | select * #Gets details of what is in the $ZIP file
+$ESXIMAGEPROFILE = Get-EsxImageProfile | Select-Object * #Gets details of what is in the $ZIP file
 If($ESXIMAGEPROFILE.count -gt 1)
 {
 	Write-Host "Image Profile found more than 1 image profile"
-	$ESXIMAGEPROFILE = Get-EsxImageProfile | where {$_.name -like "*standard"} | Sort Name
+	$ESXIMAGEPROFILE = Get-EsxImageProfile | where {$_.name -like "*standard"} | Sort-Object Name
 	If($ESXIMAGEPROFILE.count -gt 1)
 	{
 		$ESXIMAGEPROFILE = $ESXIMAGEPROFILE[0]
@@ -260,7 +261,7 @@ If($ESXIMAGEPROFILE.count -gt 1)
 }
 Write-Host "Listing Manufacturer's ESXi Image Profile:"
 $ESXIMAGEPROFILE
-$ORIGINALVIBLIST = Get-EsxSoftwarePackage | Sort Name
+$ORIGINALVIBLIST = Get-EsxSoftwarePackage | Sort-Object Name
 Write-Host "VIB List for Manufacturer ESX Image Profile will include:"
 Write-Output $ORIGINALVIBLIST | ft
 Write-Host "VIB Count for Manufacturer ESX Image Profile:"
@@ -328,7 +329,7 @@ Write-Host "--------------------------------------------------------------------
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "Getting a list of the newest VIBs"
-$VIBLIST = Get-EsxSoftwarePackage -Newest | sort Name,'Creation Date'
+$VIBLIST = Get-EsxSoftwarePackage -Newest | Sort-Object Name,'Creation Date'
 Write-Host "VIB List for New ESX Image Profile will include:"
 Write-Output $VIBLIST | ft
 Write-Host "VIB Count for New ESX Image Profile:"
@@ -345,7 +346,7 @@ If($ESXIMAGEVERSION -like "8.0.*")
 {
 	Write-Host "ESXi 8.0 Detected. Removing ESXIO (DPU) VIBs" -ForegroundColor Yellow 
 	Write-Host "(If you don't do this for x86/x64 ESXi 8, you will not be able to make a custom Image)" -ForegroundColor Yellow 
-	$VIBLISTALTERED = $VIBLIST | Where {$_.Name -NotLike "*esxio*" } | sort Name
+	$VIBLISTALTERED = $VIBLIST | Where {$_.Name -NotLike "*esxio*" } | Sort-Object Name
 	Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 	Write-Host "Updated VIB List for New ESX Image Profile will include (Unused VIBs were removed):"
 	Write-Output $VIBLISTALTERED | ft
@@ -373,7 +374,7 @@ If($UNUSEDVIBSCSVFILE)
 	$removeVibs = Import-Csv -Path $UNUSEDVIBSCSVFILE
 	Write-Host "Script will remove the following VIBs from the VIBs List"
 	Write-Output $removeVibs | ft
-	$VIBLISTALTERED = $VIBLIST | Where {$_.Name -NotIn $removeVibs.Name } | sort Name
+	$VIBLISTALTERED = $VIBLIST | Where {$_.Name -NotIn $removeVibs.Name } | Sort-Object Name
 	Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 	Write-Host "Updated VIB List for New ESX Image Profile will include (Unused VIBs were removed):"
 	Write-Output $VIBLISTALTERED | ft
@@ -432,7 +433,7 @@ If($VIBLISTALTERED)
 	$ESXIMAGEVERSION =  ($VIBLIST  | Where {$_.Name -like "esx-base"}).Version
 }
 Write-Host "Completed Creating New ESX Image Profile"
-Write-Output ($NEWESXIMAGEPROFILE | Select *)
+Write-Output ($NEWESXIMAGEPROFILE | Select-Object *)
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 
@@ -440,7 +441,7 @@ Write-Host "--------------------------------------------------------------------
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "Comparing Original Manufacturer's ESX Image Profile with Updated ESX Image Profile $NewProfileName"
-$PROFILECOMPARE = Compare-EsxImageProfile -ReferenceProfile $ESXIMAGEPROFILE.Name -ComparisonProfile $NEWESXIMAGEPROFILE.Name | Select *
+$PROFILECOMPARE = Compare-EsxImageProfile -ReferenceProfile $ESXIMAGEPROFILE.Name -ComparisonProfile $NEWESXIMAGEPROFILE.Name | Select-Object *
 Write-Host "Completed Comparing Original Manufacturer's ESX Image Profile with Updated ESX Image Profile $NewProfileName"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
@@ -495,13 +496,13 @@ New Depot Acceptance Level - $($NewProfileName + "_" + $ESXIMAGEVERSION)
 $($PROFILECOMPARE.CompAcceptanceLevel)
 
 VIBs Only in Original Depot - $($ESXIMAGEPROFILE.Name) 
-$($PROFILECOMPARE.OnlyinRef | Sort | Format-Table | Out-String)
+$($PROFILECOMPARE.OnlyinRef | Sort-Object | Format-Table | Out-String)
 
 VIBs Only in New Depot - $($NewProfileName + "_" + $ESXIMAGEVERSION) 
-$($PROFILECOMPARE.OnlyinComp | Sort | Format-Table | Out-String)
+$($PROFILECOMPARE.OnlyinComp | Sort-Object | Format-Table | Out-String)
 
 VIBs Upgraded from Original Depot
-$($PROFILECOMPARE.UpgradeFromRef | Sort | Format-Table | Out-String)"
+$($PROFILECOMPARE.UpgradeFromRef | Sort-Object | Format-Table | Out-String)"
 $REPORT | Out-File -FilePath $COMPARETXT -NoClobber
 Write-Host "Completed exporting New Custom Image to Files"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
