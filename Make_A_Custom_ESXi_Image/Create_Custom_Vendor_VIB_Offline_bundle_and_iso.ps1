@@ -200,7 +200,9 @@ C:\VMware\ESXi\Make_A_Custom_ESXi_Image\ESXi_7\VMware-ESXi-7.0.3d-19482537-Custo
 C:\VMware\ESXi\Make_A_Custom_ESXi_Image\ESXi_7\VMware-ESXi-7.0U3g-20328353-depot.zip
 C:\VMware\ESXi\Make_A_Custom_ESXi_Image\ESXi_8\VMware-ESXi-8.0-20513097-depot.zip
 "
+$ZIP = $ZIP.Trim()
 $ZIPFILE = Split-Path $ZIP -leaf
+$ZIPFILE = $ZIPFILE.Trim()
 $ZIPFILE
 Write-Host "Specify ESXi folder of ESXi Patches/VMware Tools" -ForegroundColor Yellow
 $ZIPPATCHFOLDER = read-host "Please provide the full path to the FOLDER or HTTPS Address of the Online/Offline bundles needed to update the Manufacturer offline bundle
@@ -217,6 +219,7 @@ C:\VMware\ESXi\Make_A_Custom_ESXi_Image\ESXi_7_Drivers
 C:\VMware\ESXi\Make_A_Custom_ESXi_Image\ESXi_8_Drivers
 https://vibsdepot.hpe.com/hpe/oct2020/index.xml
 "
+$MANUFACTURERBUNDLE = $MANUFACTURERBUNDLE.Trim()
 #https://vibsdepot.hpe.com/hpe/oct2020/local-metadata-hpe-esxi-drv-bundles-670.U3.10.6.0.zip
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
@@ -250,6 +253,11 @@ Write-Host "Adding Software Depot/Offline Bundle:
 $ZIP"
 $MANUDEPOT = Add-EsxSoftwareDepot $ZIP
 $ESXIMAGEPROFILE = Get-EsxImageProfile | Select-Object * #Gets details of what is in the $ZIP file
+If($ESXIMAGEPROFILE.count -lt 1){
+	Write-Error "No Esx Image Profile Found"
+	Pause
+	exit
+}
 If($ESXIMAGEPROFILE.count -gt 1)
 {
 	Write-Host "Image Profile found more than 1 image profile"
