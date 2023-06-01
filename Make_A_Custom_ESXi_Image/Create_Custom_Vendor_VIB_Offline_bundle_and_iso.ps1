@@ -233,7 +233,7 @@ If (Test-Path $LogFolder){
 	New-Item $LogFolder -type directory
 }
 #Specify Log File
-$LOGFILE = $pwd.path+"\Log\"+$LOGFILENAME
+$LOGFILE = $pwd.path+"\log\"+$LOGFILENAME
 
 ##Starting Logging
 Start-Transcript -path $LOGFILE -Append
@@ -451,7 +451,7 @@ Write-Host "--------------------------------------------------------------------
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 #Create Export Folder
 $EXPORTFOLDERNAME = $NewProfileName + "_" + $ESXIMAGEVERSION
-$ExportFolder = $pwd.path+"\Export\"+ $EXPORTFOLDERNAME
+$ExportFolder = $pwd.path+"\export\"+ $EXPORTFOLDERNAME
 If (Test-Path $ExportFolder){
 	Write-Host "Export Directory Created. Continuing..."
 }Else{
