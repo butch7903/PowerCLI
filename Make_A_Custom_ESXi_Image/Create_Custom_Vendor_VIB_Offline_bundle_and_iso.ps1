@@ -403,6 +403,10 @@ Function Remove-InvalidFileNameChars {
   }
 
 $IMAGEVENDOR = ((($ESXIMAGEPROFILE[0].vendor -replace ',','') -replace '\s','') -replace '\.','' | Out-String ) | Remove-InvalidFileNameChars
+If($IMAGEVENDOR -like "DellInc*"){
+	Write-Host "Updating Image Vendor Settings"
+	$IMAGEVENDOR = $IMAGEVENDOR.Trim()
+}
 
 If($ESXIMAGEPROFILE.Description)
 {
