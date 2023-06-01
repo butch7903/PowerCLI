@@ -78,7 +78,7 @@ If($POWERCLIVER.Version -gt 12.9)
 {
 	Write-Host "VMware PowerCLI Version Greater than 12.9 Detected..."
 	Write-Host "Validating Python is Configured Correctly..."
-	$PYPATH = Get-PowerCLIConfiguration | Select-Object Scope,PythonPath | Where {$_.Scope -eq 'User'}
+	$PYPATH = Get-PowerCLIConfiguration | Select-Object Scope,PythonPath | Where-Object {$_.Scope -eq 'User'}
 	If(!$PYPATH.PythonPath)
 	{
 		Write-Host "Python Path Not Set" -ForegroundColor Red
@@ -253,7 +253,7 @@ $ESXIMAGEPROFILE = Get-EsxImageProfile | Select-Object * #Gets details of what i
 If($ESXIMAGEPROFILE.count -gt 1)
 {
 	Write-Host "Image Profile found more than 1 image profile"
-	$ESXIMAGEPROFILE = Get-EsxImageProfile | where {$_.name -like "*standard"} | Sort-Object Name
+	$ESXIMAGEPROFILE = Get-EsxImageProfile | Where-Object {$_.name -like "*standard"} | Sort-Object Name
 	If($ESXIMAGEPROFILE.count -gt 1)
 	{
 		$ESXIMAGEPROFILE = $ESXIMAGEPROFILE[0]
@@ -263,7 +263,7 @@ Write-Host "Listing Manufacturer's ESXi Image Profile:"
 $ESXIMAGEPROFILE
 $ORIGINALVIBLIST = Get-EsxSoftwarePackage | Sort-Object Name
 Write-Host "VIB List for Manufacturer ESX Image Profile will include:"
-Write-Output $ORIGINALVIBLIST | ft
+Write-Output $ORIGINALVIBLIST | Format-Table
 Write-Host "VIB Count for Manufacturer ESX Image Profile:"
 Write-Output $ORIGINALVIBLIST.count
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
@@ -331,7 +331,7 @@ Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "Getting a list of the newest VIBs"
 $VIBLIST = Get-EsxSoftwarePackage -Newest | Sort-Object Name,'Creation Date'
 Write-Host "VIB List for New ESX Image Profile will include:"
-Write-Output $VIBLIST | ft
+Write-Output $VIBLIST | Format-Table
 Write-Host "VIB Count for New ESX Image Profile:"
 Write-Output $VIBLIST.count
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
@@ -373,11 +373,11 @@ If($UNUSEDVIBSCSVFILE)
 {
 	$removeVibs = Import-Csv -Path $UNUSEDVIBSCSVFILE
 	Write-Host "Script will remove the following VIBs from the VIBs List"
-	Write-Output $removeVibs | ft
-	$VIBLISTALTERED = $VIBLIST | Where {$_.Name -NotIn $removeVibs.Name } | Sort-Object Name
+	Write-Output $removeVibs | Format-Table
+	$VIBLISTALTERED = $VIBLIST | Where-Object {$_.Name -NotIn $removeVibs.Name } | Sort-Object Name
 	Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 	Write-Host "Updated VIB List for New ESX Image Profile will include (Unused VIBs were removed):"
-	Write-Output $VIBLISTALTERED | ft
+	Write-Output $VIBLISTALTERED | Format-Table
 	Write-Host "Updated VIB Count for New ESX Image Profile (Unused VIBs were removed):"
 	Write-Output $VIBLISTALTERED.count
 }
@@ -421,7 +421,7 @@ If($VIBLISTALTERED)
     -Vendor $IMAGEVENDOR -AcceptanceLevel $ESXIMAGEPROFILE.AcceptanceLevel -Description $ESXIMAGEPROFILEDescription `
     -ErrorAction Stop -ErrorVariable CreationError
 	
-	$ESXIMAGEVERSION = ($VIBLISTALTERED | Where {$_.Name -like "esx-base"}).Version
+	$ESXIMAGEVERSION = ($VIBLISTALTERED | Where-Object {$_.Name -like "esx-base"}).Version
 }Else{
 	Write-Host "Creating New ESX Image Profile Based on the Unique/Newest VIB List (No unused VIBs were removed)"
 	$EDITION = Get-Date -format "MMMddyyyy"
@@ -430,7 +430,7 @@ If($VIBLISTALTERED)
     -Vendor $IMAGEVENDOR -AcceptanceLevel $ESXIMAGEPROFILE.AcceptanceLevel -Description $ESXIMAGEPROFILEDescription `
     -ErrorAction Stop -ErrorVariable CreationError
 	
-	$ESXIMAGEVERSION =  ($VIBLIST  | Where {$_.Name -like "esx-base"}).Version
+	$ESXIMAGEVERSION =  ($VIBLIST  | Where-Object {$_.Name -like "esx-base"}).Version
 }
 Write-Host "Completed Creating New ESX Image Profile"
 Write-Output ($NEWESXIMAGEPROFILE | Select-Object *)
