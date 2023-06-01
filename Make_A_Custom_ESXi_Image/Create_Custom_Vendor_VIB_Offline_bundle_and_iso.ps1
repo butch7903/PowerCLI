@@ -253,18 +253,20 @@ Write-Host "Adding Software Depot/Offline Bundle:
 $ZIP"
 $MANUDEPOT = Add-EsxSoftwareDepot $ZIP
 $ESXIMAGEPROFILE = Get-EsxImageProfile | Select-Object * #Gets details of what is in the $ZIP file
-If($ESXIMAGEPROFILE.count -lt 1){
-	Write-Error "No Esx Image Profile Found"
-	Pause
-	exit
-}
-If($ESXIMAGEPROFILE.count -gt 1)
-{
-	Write-Host "Image Profile found more than 1 image profile"
-	$ESXIMAGEPROFILE = Get-EsxImageProfile | Where-Object {$_.name -like "*standard"} | Sort-Object Name
+If($ESXIMAGEPROFILE.count){
+	If($ESXIMAGEPROFILE.count -lt 1){
+		Write-Error "No Esx Image Profile Found"
+		Pause
+		exit
+	}
 	If($ESXIMAGEPROFILE.count -gt 1)
 	{
-		$ESXIMAGEPROFILE = $ESXIMAGEPROFILE[0]
+		Write-Host "Image Profile found more than 1 image profile"
+		$ESXIMAGEPROFILE = Get-EsxImageProfile | Where-Object {$_.name -like "*standard"} | Sort-Object Name
+		If($ESXIMAGEPROFILE.count -gt 1)
+		{
+			$ESXIMAGEPROFILE = $ESXIMAGEPROFILE[0]
+		}
 	}
 }
 Write-Host "Listing Manufacturer's ESXi Image Profile:"
