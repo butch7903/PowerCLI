@@ -185,7 +185,7 @@ If($POWERCLIVER.Version -gt 12.9)
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 
 ##Get Current Path
-$pwd = pwd
+$LOCATION = Get-Location
 
 ##Document Start Time
 $STARTTIME = Get-Date -format "MMM-dd-yyyy HH-mm-ss"
@@ -229,14 +229,14 @@ $LOGDATE = Get-Date -format "MMM-dd-yyyy_HH-mm"
 ##Specify Log File Info
 $LOGFILENAME = "Log_" + $ZIPFILE + "_" + $LOGDATE + ".txt"
 #Create Log Folder
-$LogFolder = $pwd.path+"\Log"
+$LogFolder = $LOCATION.path+"\Log"
 If (Test-Path $LogFolder){
 	Write-Host "Log Directory Created. Continuing..."
 }Else{
 	New-Item $LogFolder -type directory
 }
 #Specify Log File
-$LOGFILE = $pwd.path+"\log\"+$LOGFILENAME
+$LOGFILE = $LOCATION.path+"\log\"+$LOGFILENAME
 
 ##Starting Logging
 Start-Transcript -path $LOGFILE -Append
@@ -463,18 +463,47 @@ Write-Host "--------------------------------------------------------------------
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 #Create Export Folder
 $EXPORTFOLDERNAME = $NewProfileName + "_" + $ESXIMAGEVERSION
-$ExportFolder = $pwd.path+"\export\"+ $EXPORTFOLDERNAME
-If (Test-Path $ExportFolder){
-	Write-Host "Export Directory Created. Continuing..."
-}Else{
-	New-Item $ExportFolder -type directory
+
+If ($IsWindows -or $ENV:OS){
+	$ExportFolder = $LOCATION.path+"\export\"+ $EXPORTFOLDERNAME
+	If (Test-Path $ExportFolder){
+		Write-Host "Export Directory Created. Continuing..."
+	}Else{
+		New-Item $ExportFolder -type directory
+	}
+	#Specify Log File
+	$ORIGCSV = $ExportFolder+"\"+(($ESXIMAGEPROFILE.Name)+"_Original.csv")
+	$EXPORTCSV = $ExportFolder+"\"+($NewProfileName+"_"+$ESXIMAGEVERSION+".csv")
+	$EXPORTZIP = $ExportFolder+"\"+($NewProfileName+"_"+$ESXIMAGEVERSION+".zip")
+	$EXPORTISO = $ExportFolder+"\"+($NewProfileName+"_"+$ESXIMAGEVERSION+".iso")
+	$COMPARETXT = $ExportFolder+"\"+($ESXIMAGEPROFILE.Name)+"_Comparison_Report.txt"
+}ElseIf ($IsLinux -or $ENV:OS){
+	$ExportFolder = $LOCATION.path+"/export/"+ $EXPORTFOLDERNAME
+	If (Test-Path $ExportFolder){
+		Write-Host "Export Directory Created. Continuing..."
+	}Else{
+		New-Item $ExportFolder -type directory
+	}
+	#Specify Log File
+	$ORIGCSV = $ExportFolder+"/"+(($ESXIMAGEPROFILE.Name)+"_Original.csv")
+	$EXPORTCSV = $ExportFolder+"/"+($NewProfileName+"_"+$ESXIMAGEVERSION+".csv")
+	$EXPORTZIP = $ExportFolder+"/"+($NewProfileName+"_"+$ESXIMAGEVERSION+".zip")
+	$EXPORTISO = $ExportFolder+"/"+($NewProfileName+"_"+$ESXIMAGEVERSION+".iso")
+	$COMPARETXT = $ExportFolder+"/"+($ESXIMAGEPROFILE.Name)+"_Comparison_Report.txt"
+}ElseIf ($IsMacOS -or $ENV:OS){
+	$ExportFolder = $LOCATION.path+"/export/"+ $EXPORTFOLDERNAME
+	If (Test-Path $ExportFolder){
+		Write-Host "Export Directory Created. Continuing..."
+	}Else{
+		New-Item $ExportFolder -type directory
+	}
+	#Specify Log File
+	$ORIGCSV = $ExportFolder+"/"+(($ESXIMAGEPROFILE.Name)+"_Original.csv")
+	$EXPORTCSV = $ExportFolder+"/"+($NewProfileName+"_"+$ESXIMAGEVERSION+".csv")
+	$EXPORTZIP = $ExportFolder+"/"+($NewProfileName+"_"+$ESXIMAGEVERSION+".zip")
+	$EXPORTISO = $ExportFolder+"/"+($NewProfileName+"_"+$ESXIMAGEVERSION+".iso")
+	$COMPARETXT = $ExportFolder+"/"+($ESXIMAGEPROFILE.Name)+"_Comparison_Report.txt"
 }
-#Specify Log File
-$ORIGCSV = $ExportFolder+"\"+(($ESXIMAGEPROFILE.Name)+"_Original.csv")
-$EXPORTCSV = $ExportFolder+"\"+($NewProfileName+"_"+$ESXIMAGEVERSION+".csv")
-$EXPORTZIP = $ExportFolder+"\"+($NewProfileName+"_"+$ESXIMAGEVERSION+".zip")
-$EXPORTISO = $ExportFolder+"\"+($NewProfileName+"_"+$ESXIMAGEVERSION+".iso")
-$COMPARETXT = $ExportFolder+"\"+($ESXIMAGEPROFILE.Name)+"_Comparison_Report.txt"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 
