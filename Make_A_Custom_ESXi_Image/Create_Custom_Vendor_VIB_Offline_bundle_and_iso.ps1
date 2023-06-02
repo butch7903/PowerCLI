@@ -515,8 +515,10 @@ Write-Host "Exporting Original VIB list from Manufacturer..." -ForegroundColor G
 $ORIGINALVIBLIST | Export-CSV -Path $ORIGCSV -NoTypeInformation
 Write-Host "Exporting New Custom Image to Files"
 Write-Host "Creating ZIP bundle..." -ForegroundColor Green
+Write-Host "Exporting ZIP to: $EXPORTZIP"
 Export-EsxImageProfile -ImageProfile $NEWESXIMAGEPROFILE -ExportToBundle -FilePath $EXPORTZIP -Force
 Write-Host "Creating ISO image..." -ForegroundColor Green
+Write-Host "Exporting ISO to: $EXPORTISO"
 Export-EsxImageProfile -ImageProfile $NEWESXIMAGEPROFILE -ExportToIso -FilePath $EXPORTISO -Force
 If($VIBLISTALTERED)
 {
