@@ -426,7 +426,7 @@ If($ESXIMAGEPROFILE.Description)
 If($VIBLISTALTERED)
 {
 	Write-Host "Creating New ESX Image Profile Based on the Altered VIB List (Unused VIBs were removed)"
-	$EDITION = Get-Date -format "MMMddyyyy"
+	$EDITION = Get-Date -format "MMMddyyyyhhss"
 	$NewProfileName = ($IMAGEVENDOR + "_custom_" + $EDITION)
 	Write-Host "Profile name will be $NewProfileName"
 	$NEWESXIMAGEPROFILE = New-EsxImageProfile -NewProfile $NewProfileName -SoftwarePackage $VIBLISTALTERED `
@@ -436,7 +436,7 @@ If($VIBLISTALTERED)
 	$ESXIMAGEVERSION = ($VIBLISTALTERED | Where-Object {$_.Name -like "esx-base"}).Version
 }Else{
 	Write-Host "Creating New ESX Image Profile Based on the Unique/Newest VIB List (No unused VIBs were removed)"
-	$EDITION = Get-Date -format "MMMddyyyy"
+	$EDITION = Get-Date -format "MMMddyyyyhhss"
 	$NewProfileName = ($IMAGEVENDOR + "_custom_" + $EDITION)
 	$NEWESXIMAGEPROFILE = New-EsxImageProfile -NewProfile $NewProfileName -SoftwarePackage $VIBLIST `
     -Vendor $IMAGEVENDOR -AcceptanceLevel $ESXIMAGEPROFILE.AcceptanceLevel -Description $ESXIMAGEPROFILEDescription `
