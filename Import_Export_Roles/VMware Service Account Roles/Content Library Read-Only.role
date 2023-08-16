@@ -1,0 +1,11 @@
+System.Anonymous
+System.View
+System.Read
+ContentLibrary.GetConfiguration
+ContentLibrary.SyncLibraryItem
+ContentLibrary.SyncLibrary
+ContentLibrary.CheckOutTemplate
+ContentLibrary.DownloadSession
+ContentLibrary.CheckInTemplate
+ContentLibrary.ProbeSubscription
+ContentLibrary.ReadStorage
