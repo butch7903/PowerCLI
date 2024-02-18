@@ -83,6 +83,7 @@ $STARTTIME = Get-Date -format "MMM-dd-yyyy HH-mm-ss"
 $STARTTIMESW = [Diagnostics.Stopwatch]::StartNew()
 
 ##Import Module
+Write-Host "Importing Module VMware.PowerCLI..."
 Import-Module VMware.PowerCLI
 
 ##Get Date Info for Logging
@@ -425,6 +426,7 @@ Do{
 }Until($VM -ne $null)
 Write-Host " "   
 Write-Host "OVA Import Completed"
+Start-Sleep -Seconds 5
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 
@@ -435,9 +437,13 @@ Write-Host "Upgrading VM Hardware Version - $VMNAME"
 IF($VMHOST.Version -eq "7.0.0"){
 	$VMVERSION = "vmx-19"
 }
-IF($VMHOST.Version -eq "8.0.0"){
+IF($VMHOST.Version -match "8"){
 	$VMVERSION = "vmx-20"
 }
+IF($VMHOST.Version -match "8.0.2"){
+	$VMVERSION = "vmx-21"
+}
+Write-Host "Upgrading VM Hardware Version to $VMVERSION"
 (Get-VM -Name $VMNAME).ExtensionData.UpgradeVM($VMVERSION)
 Write-Host "Upgrading VM Hardware to Version $VMVERSION - $VMNAME"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
