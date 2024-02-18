@@ -410,7 +410,15 @@ Write-Host " "
 Do{
 	Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 	Write-Host "Deploying VM - $VMNAME"
-	Get-ContentLibraryItem -Name $CONTENTLIBRARYITEM -ContentLibrary $CONTENTLIBRARY | New-VM –Name $VMNAME –VMHost $VMHOST -Datastore $DATASTORE -DiskStorageFormat Thin -OvfConfiguration $OVACONFIG -ResourcePool $RESOURCEPOOL -Location $VMFOLDER -Confirm:$false
+	Get-ContentLibraryItem -Name $CONTENTLIBRARYITEM -ContentLibrary $CONTENTLIBRARY | `
+	New-VM -Name $VMNAME `
+	-VMHost $VMHOST `
+	-Datastore $DATASTORE `
+	-DiskStorageFormat Thin `
+	-OvfConfiguration $OVACONFIG `
+	-ResourcePool $RESOURCEPOOL `
+	-Location $VMFOLDER `
+	-Confirm:$false
 	Start-Sleep 10
 	$VM = $null
 	$VM = Get-VM $VMNAME -ErrorAction SilentlyContinue
