@@ -20,10 +20,11 @@
 #>
 
 ##Get Current Path
-$pwd = pwd
+$LOCATION = Get-Location
 
 ##Document Start Time
 $STARTTIME = Get-Date -format "MMM-dd-yyyy HH-mm-ss"
+Write-Host "Start time is $STARTTIME"
 $STARTTIMESW = [Diagnostics.Stopwatch]::StartNew()
 
 #Type in VCSA Name
@@ -75,14 +76,14 @@ $LOGDATE = Get-Date -format "MMM-dd-yyyy_HH-mm"
 ##Specify Log File Info
 $LOGFILENAME = "Log_" + $vCenter + "_" + $LOGDATE + ".txt"
 #Create Log Folder
-$LogFolder = $pwd.path+"\Log"
+$LogFolder = $LOCATION.path+"\Log"
 If (Test-Path $LogFolder){
 	Write-Host "Log Directory Created. Continuing..."
 }Else{
 	New-Item $LogFolder -type directory
 }
 #Specify Log File
-$LOGFILE = $pwd.path+"\Log\"+$LOGFILENAME
+$LOGFILE = $LOCATION.path+"\Log\"+$LOGFILENAME
 
 ##Starting Logging
 Start-Transcript -path $LOGFILE -Append
@@ -97,7 +98,7 @@ Write-Host "--------------------------------------------------------------------
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "Creating Export Location if it does not Exist"
-$ExportFolder = $pwd.path+"\Export\$VCSA"
+$ExportFolder = $LOCATION.path+"\Export\$VCSA"
 If (Test-Path $ExportFolder){
 	Write-Host "Export Directory Created. Continuing..."
 }Else{
@@ -110,7 +111,7 @@ Write-Host "--------------------------------------------------------------------
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "Getting list of VCSA Roles"
-$ROLELIST = Get-VIRole | Sort Name
+$ROLELIST = Get-VIRole | Sort-Object Name
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 
@@ -118,7 +119,7 @@ Write-Host "--------------------------------------------------------------------
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "Exporting ALL Roles from VCSA $VCSA including:"
-Write-Output $ROLELIST | ft
+Write-Output $ROLELIST | Format-Table
 ForEach($ROLE in $ROLELIST)
 {
 	$ROLENAME = $ROLE.Name

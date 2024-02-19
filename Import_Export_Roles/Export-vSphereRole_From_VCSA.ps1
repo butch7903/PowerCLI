@@ -20,10 +20,11 @@
 #>
 
 ##Get Current Path
-$pwd = pwd
+$LOCATION = Get-Location
 
 ##Document Start Time
 $STARTTIME = Get-Date -format "MMM-dd-yyyy HH-mm-ss"
+Write-Host "Start Time is $STARTTIME"
 $STARTTIMESW = [Diagnostics.Stopwatch]::StartNew()
 
 #Type in VCSA Name
@@ -75,14 +76,14 @@ $LOGDATE = Get-Date -format "MMM-dd-yyyy_HH-mm"
 ##Specify Log File Info
 $LOGFILENAME = "Log_" + $vCenter + "_" + $LOGDATE + ".txt"
 #Create Log Folder
-$LogFolder = $pwd.path+"\Log"
+$LogFolder = $LOCATION.path+"\Log"
 If (Test-Path $LogFolder){
 	Write-Host "Log Directory Created. Continuing..."
 }Else{
 	New-Item $LogFolder -type directory
 }
 #Specify Log File
-$LOGFILE = $pwd.path+"\Log\"+$LOGFILENAME
+$LOGFILE = $LOCATION.path+"\Log\"+$LOGFILENAME
 
 ##Starting Logging
 Start-Transcript -path $LOGFILE -Append
@@ -95,9 +96,9 @@ Write-Host "--------------------------------------------------------------------
 ##Select Role
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
-CLS
+Clear-Host
 Write-Host "Select Role to Export on vCenter $VCSA"
-$ROLE = Get-VIRole | Sort Name #| select Name
+$ROLE = Get-VIRole | Sort-Object Name #| select Name
 $countCL = 0   
 Write-Host " " 
 Write-Host "Role: " 
@@ -109,7 +110,7 @@ foreach($oC in $ROLE)
 }
 Write-Host " "   
 $choice = Read-Host "Which Role do you wish to Export?"
-$THEROLE = (Get-VIRole | Sort Name)[$choice]
+$THEROLE = (Get-VIRole | Sort-Object Name)[$choice]
 $ROLENAME = $THEROLE.NAME
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
@@ -119,7 +120,7 @@ Write-Host "--------------------------------------------------------------------
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "Creating Export Location if it does not Exist"
-$ExportFolder = $pwd.path+"\Export\$VCSA"
+$ExportFolder = $LOCATION.path+"\Export\$VCSA"
 If (Test-Path $ExportFolder){
 	Write-Host "Export Directory Created. Continuing..."
 }Else{
