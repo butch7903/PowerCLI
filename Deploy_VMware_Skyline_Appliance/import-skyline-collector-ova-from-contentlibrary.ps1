@@ -76,7 +76,7 @@ param(
 If($Confirm.Count -eq 0){$Confirm = $true}
 
 ##Get Current Path
-$pwd = pwd
+$LOCATION = Get-Location
 
 ##Document Start Time
 $STARTTIME = Get-Date -format "MMM-dd-yyyy HH-mm-ss"
@@ -91,14 +91,14 @@ $LOGDATE = Get-Date -format "MMM-dd-yyyy_HH-mm"
 ##Specify Log File Info
 $LOGFILENAME = "log_" + $VCSA + "_import_skyline_collector_ova_" + $LOGDATE + ".txt"
 #Create Log Folder
-$LogFolder = $pwd.path+"\log"
+$LogFolder = $LOCATION.path+"\log"
 If (Test-Path $LogFolder){
 	Write-Host "Log Directory Created. Continuing..."
 }Else{
 	New-Item $LogFolder -type directory
 }
 #Specify Log File
-$LOGFILE = $pwd.path+"\log\"+$LOGFILENAME
+$LOGFILE = $LOCATION.path+"\log\"+$LOGFILENAME
 
 ##Starting Logging
 Start-Transcript -path $LOGFILE -Append
@@ -115,7 +115,7 @@ IF($VCSA){
 }
 
 ##Create Secure AES Keys for User and Password Management
-$KeyFile = $pwd.path+"\"+"AES.key"
+$KeyFile = $LOCATION.path+"\"+"AES.key"
 If (Test-Path $KeyFile){
 	Write-Host "AES File Exists"
 	$Key = Get-Content $KeyFile
@@ -127,7 +127,7 @@ If (Test-Path $KeyFile){
 }
 
 ##Create Secure XML Credential File for vCenter/NSX Access
-$MgrCreds = $pwd.path+"\"+"$VCSA.xml"
+$MgrCreds = $LOCATION.path+"\"+"$VCSA.xml"
 If (Test-Path $MgrCreds){
 	Write-Host "$VCSA.xml file found"
 	Write-Host "Continuing..."
@@ -151,7 +151,7 @@ If (Test-Path $MgrCreds){
 ##Document Selections
 Do
 {
-CLS
+Clear-Host
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "Documenting User Selections"
@@ -166,7 +166,7 @@ Write-host "Are the Above Settings Correct?" -ForegroundColor Yellow
 $Readhost = Read-Host " ( y / n ) " 
 Switch ($ReadHost){ 
 		Y {Write-host "Yes selected"; $VERIFICATION=$true} 
-		N {Write-Host "No selected, Please Close this Window to Stop this Script"; $VERIFICATION=$false; PAUSE; CLS} 
+		N {Write-Host "No selected, Please Close this Window to Stop this Script"; $VERIFICATION=$false; PAUSE; Clear-Host} 
 		Default {Write-Host "Default,  Yes"; $VERIFICATION=$true} 
 }
 }Until($VERIFICATION -eq $true)
@@ -201,14 +201,14 @@ Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "Connecting to vCenter Server Appliance (VCSA) $VCSA"
 $VISERVER = Connect-VIServer -server $VCSA -Credential $MyCredential
 $VCSAIP = ([System.Net.Dns]::GetHostEntry($VCSA)).AddressList.IPAddressToString
-Write-Host "Connected to VCSA $VIServer"
+Write-Host "Connected to VCSA $VIServer - $VCSAIP"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 
 ##Select CLUSTER
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
-CLS
+Clear-Host
 Write-Host "Select Cluster on VCSA $VCSA"
 $CLUSTER = Get-Cluster | Sort-Object Name
 $countCL = 0   
@@ -232,7 +232,7 @@ Write-Host "--------------------------------------------------------------------
 ##Select Datastore
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
-CLS
+Clear-Host
 Write-Host "Select Datastore on Cluster $CLUSTER on VCSA $VCSA"
 $DATASTORE = $VMHOST | Get-Datastore | Sort-Object Name
 $countCL = 0   
@@ -254,7 +254,7 @@ Write-Host "--------------------------------------------------------------------
 ##Select Resource Pool/Optional
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
-CLS
+Clear-Host
 Write-Host "Optional - Select Resource Pool on vCenter $VCSA"
 $RESOURCEPOOLLIST = Get-Cluster $CLUSTER | Get-ResourcePool | Sort-Object Name
 IF($RESOURCEPOOLLIST.Count -gt 1){
@@ -281,7 +281,7 @@ Write-Host "--------------------------------------------------------------------
 ##Select Network
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
-CLS
+Clear-Host
 Write-Host "Select Port Group on VMHost $VMHOST from VCSA $VCSA"
 $PORTGROUP = Get-VMHost $VMHOST | Get-VirtualPortGroup | Sort-Object Name
 $countCL = 0   
@@ -303,7 +303,7 @@ Write-Host "--------------------------------------------------------------------
 ##Select Content Library
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
-CLS
+Clear-Host
 Write-Host "Select the Content Library of where the OVA is Stored on VCSA $VCSA"
 $CONTENTLIBRARYLIST = (Get-ContentLibrary | Select-Object Name | Sort-Object Name).Name
 If($CONTENTLIBRARYLIST.count -eq 1){
@@ -330,7 +330,7 @@ Write-Host "--------------------------------------------------------------------
 ##Select Content Library Item
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
-CLS
+Clear-Host
 Write-Host "Select the Content Library of where the OVA is Stored on VCSA $VCSA"
 $CONTENTLIBRARYITEMLIST = (Get-ContentLibraryItem -ContentLibrary $CONTENTLIBRARY | Select-Object Name | Sort-Object).Name
 $countCL = 0   
@@ -352,7 +352,7 @@ Write-Host "--------------------------------------------------------------------
 ##Select VM Folder Location
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
-CLS
+Clear-Host
 Write-Host "Select the VM Folder for where the OVA is Stored on VCSA $VCSA"
 $VMFOLDERLIST  = Get-Folder -Type VM | Sort-Object Name
 $countCL = 0   
@@ -483,6 +483,9 @@ Write-Host "--------------------------------------------------------------------
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 $STARTTIMESW.STOP()
 Write-Host "Total Script Time:"$STARTTIMESW.Elapsed.TotalMinutes"Minutes"
+Write-Host "Start Time: $STARTTIME"
+$ENDTIME = Get-Date -format "MMM-dd-yyyy HH-mm-ss"
+Write-Host "End Time: $ENDTIME"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 
