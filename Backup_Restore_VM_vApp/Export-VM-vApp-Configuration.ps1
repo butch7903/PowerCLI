@@ -1,26 +1,34 @@
 <#
-    .NOTES
-	===========================================================================
+.NOTES
 	Created by:		Russell Hamker
 	Date:			July 28, 2020
 	Version:		1.0
 	Twitter:		@butch7903
 	GitHub:			https://github.com/butch7903
-	===========================================================================
 
-	.SYNOPSIS
-		This script will Export the vApp Settings for any VM to a JSON File.
+.SYNOPSIS
+		This script will Export the vApp Settings for a single VM to a JSON File.
 
-	.DESCRIPTION
-		Use this script to select a VM that had vApp settings originally 
+.DESCRIPTION
+		Use this script to select a VM that has vApp settings originally 
 		applied. This script will then export the VMs vApp configuration to a
 		JSON file.
-	.NOTES
-		This script requires a VMware PowerCLI minimum version 11.4 or greater. 
 
-	.TROUBLESHOOTING
+.EXAMPLE
+	#Example 1 
+	$VCSA = "hamvc01.hamker.local"
+	$VMName = "VROPS"
+	$Confirm = $false #Do false for full automation tasks
+	./export-vm-vapp-configuration.ps1 -VCSA $VCSA -VMName $VMName -Confirm $false
 		
 #>
+
+param(
+	[Parameter(Mandatory=$true)][String]$VCSA,
+	[Parameter(Mandatory=$true)][String]$VMName,
+	[Parameter(Mandatory=$false)][Boolean]$Confirm
+)
+If($Confirm.Count -eq 0){$Confirm = $true}
 
 ##Check if Modules are installed, if so load them, else install them
 if (Get-InstalledModule -Name VMware.PowerCLI -MinimumVersion 11.4) {
@@ -71,22 +79,22 @@ function Export-VM-vApp-Configuration {
 	}
 	Write-Output "Exporting VM vAPP settings for $VMNAME"
 	##Get Current Path
-	$pwd = pwd
+	$LOCATION = Get-Location
 	#Convert File PATH
-	$FILEPATH = $pwd.path
+	$FILEPATH = $LOCATION.path
 	##Create Export Folder
-	$ExportFolder = "$FILEPATH\Export"
+	$ExportFolder = "$FILEPATH\export"
 	If (Test-Path $ExportFolder){
 		Write-Host "Export Directory Created. Continuing..."
 	}Else{
 		New-Item $ExportFolder -type directory
 	}
 	#Setting JSON PATH
-	$JSONPATH = "$ExportFolder\$VMNAME"+"_Export-VM-vApp-Configuration.json"
+	$JSONPATH = "$ExportFolder\$VMNAME"+"_export-VM-vApp-Configuration.json"
 	##Get VM Info
 	$VM = Get-VM $VMNAME
 	##Parse VM Data
-	$vAppConfig = $VM.ExtensionData.Config.vAppConfig | Select *
+	$vAppConfig = $VM.ExtensionData.Config.vAppConfig | Select-Object *
 	##Convert to JSON
 	$JSON = ConvertTo-Json $vAppConfig
 	##Export JSON to File
@@ -97,13 +105,15 @@ function Export-VM-vApp-Configuration {
 
 ##Document Start Time
 $STARTTIME = Get-Date -format "MMM-dd-yyyy HH-mm-ss"
+Write-Host "Start Time $STARTTIME"
 $STARTTIMESW = [Diagnostics.Stopwatch]::StartNew()
 
 ##Get Current Path
-$pwd = pwd
+$LOCATION = Get-Location
 
+<#
 ##Setting CSV File Location 
-$CSVFILELOCATION = $pwd.path
+$CSVFILELOCATION = $LOCATION.path
 
 ##Select VCSA
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
@@ -114,13 +124,13 @@ $VCSACSVFILEGET = Get-Item "$CSVFILELOCATION\$VCSACSVFILENAME" -ErrorAction Sile
 $VCSACSVFILE = "$CSVFILELOCATION\$VCSACSVFILENAME"
 If(!$VCSACSVFILEGET)
 {
-	CLS
+	Clear-Host
 	Write-Host "VCSA List CSV File not found"
 	$VCSANAME = @()
-	$CREATENEWRECORD = "" | Select VCSA
+	$CREATENEWRECORD = "" | Select-Object VCSA
 	$CREATENEWRECORD.VCSA = "Create New Record" 
 	$VCSANAME += $CREATENEWRECORD
-	$VCSATEMPLIST = "" | Select VCSA
+	$VCSATEMPLIST = "" | Select-Object VCSA
 	$VCSATEMPLIST.VCSA = Read-Host "Please provide a VCSA FQDN"
 	$VCSANAME += $VCSATEMPLIST
 	$VCSANAME | Export-CSV -NoTypeInformation -PATH $VCSACSVFILE
@@ -129,10 +139,10 @@ If(!$VCSACSVFILEGET)
 }
 If($VCSACSVFILEGET)
 {
-	CLS
+	Clear-Host
 	Write-Host "VCSA List CSV File found. Importing file..."
 	$VCSALIST = Import-CSV -PATH $VCSACSVFILE
-	$VCSASITELIST = $VCSALIST | Where {$_.Site -eq $SITE -or $_.Site -eq "NA"}
+	$VCSASITELIST = $VCSALIST | Where-Object {$_.Site -eq $SITE -or $_.Site -eq "NA"}
 	$countCL = 0  
 	foreach($oC in $VCSASITELIST)
 	{   
@@ -148,7 +158,7 @@ If($VCSACSVFILEGET)
 	{
 		$VCSANAME = $VCSALIST
 		Write-Host "Creating New Record Selected..."
-		$VCSATEMPLIST = "" | Select VCSA
+		$VCSATEMPLIST = "" | Select-Object VCSA
 		$VCSATEMPLIST.VCSA = Read-Host "Please provide a VCSA FQDN"
 		$VCSANAME += $VCSATEMPLIST
 		$VCSANAME | Export-CSV -NoTypeInformation -PATH $VCSACSVFILE -Confirm:$false
@@ -162,20 +172,63 @@ If($VCSACSVFILEGET)
 Write-Host "VCSA Selected is $VCSA"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+#>
 
+##Check for VCSA Parameter
+If(!$VCSA){
+Write-Error "No VCSA Specified"
+}
+IF($VCSA){
+	Write-Host "VCSA Specified in Parameter is $VCSA"
+}
+	
+##Create Secure AES Keys for User and Password Management
+$KeyFile = $LOCATION.path+"\"+"AES.key"
+If (Test-Path $KeyFile){
+	Write-Host "AES File Exists"
+	$Key = Get-Content $KeyFile
+	Write-Host "Continuing..."
+}Else{
+	$Key = New-Object Byte[] 16   # You can use 16, 24, or 32 for AES
+	[Security.Cryptography.RNGCryptoServiceProvider]::Create().GetBytes($Key)
+	$Key | out-file $KeyFile
+}
+
+##Create Secure XML Credential File for vCenter/NSX Access
+$MgrCreds = $LOCATION.path+"\"+"$VCSA.xml"
+If (Test-Path $MgrCreds){
+	Write-Host "$VCSA.xml file found"
+	Write-Host "Continuing..."
+	$ImportObject = Import-Clixml $MgrCreds
+	$SecureString = ConvertTo-SecureString -String $ImportObject.Password -Key $Key
+	$MyCredential = New-Object System.Management.Automation.PSCredential($ImportObject.UserName, $SecureString)
+}Else{
+	Write-Host "Credentials File Not Found, Please input Credentials"
+	$newPScreds = Get-Credential -message "Enter vCenter Admin Creds here:"
+	#$rng = [System.Security.Cryptography.RNGCryptoServiceProvider]::Create()
+	#$rng.GetBytes($Key)
+	$exportObject = New-Object psobject -Property @{
+		UserName = $newPScreds.UserName
+		Password = ConvertFrom-SecureString -SecureString $newPScreds.Password -Key $Key
+	}
+
+	$exportObject | Export-Clixml ($VCSA +".xml")
+	$MyCredential = $newPScreds
+}
+	
 ##Get Date Info for Logging
 $LOGDATE = Get-Date -format "MMM-dd-yyyy_HH-mm"
 ##Specify Log File Info
 $LOGFILENAME = "Log_" + $VCSA + "_" + $LOGDATE + ".txt"
 #Create Log Folder
-$LogFolder = $pwd.path+"\Log"
+$LogFolder = $LOCATION.path+"\log"
 If (Test-Path $LogFolder){
 	Write-Host "Log Directory Created. Continuing..."
 }Else{
 	New-Item $LogFolder -type directory
 }
 #Specify Log File
-$LOGFILE = $pwd.path+"\Log\"+$LOGFILENAME
+$LOGFILE = $LOCATION.path+"\log\"+$LOGFILENAME
 
 ##Starting Logging
 Start-Transcript -path $LOGFILE -Append
@@ -186,7 +239,7 @@ Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 
 ##Provide Credentials
-CLS
+Clear-Host
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 If(!$MyCredential)
@@ -221,8 +274,8 @@ Write-Host "--------------------------------------------------------------------
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "Connecting to vCenter $VCSA"
-$VISERVER = Connect-VIServer -server $VCSA -Credential $MyCredential
-Write-Host "Connected to vCenter "
+$VISERVER = Connect-VIServer -server $VCSA -Credential $MyCredential -ErrorAction Stop
+Write-Host "Connected to vCenter $VISERVER"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 
@@ -230,9 +283,11 @@ Write-Host "--------------------------------------------------------------------
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "Beginning Export of VM vApp Configuration"
-$VMNAME = Read-Host "Please Provide the VM Name of the VM with vApp settings you wish to Export"
-Export-VM-vApp-Configuration $VMNAME
-Write-Host "Completed Export of VM $VMNAME vApp Configuration"
+If(!$VMName){
+	$VMName = Read-Host "Please Provide the VM Name of the VM with vApp settings you wish to Export"
+}
+Export-VM-vApp-Configuration $VMName
+Write-Host "Completed Export of VM $VMName vApp Configuration"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 
@@ -269,7 +324,7 @@ Write-Host "--------------------------------------------------------------------
 ##Script Completed
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
-Write-Host "Script Completed for $VCSA"
+Write-Host "Script Completed for $VCSA - $VMName"
 Write-Host "Press Enter to close this PowerShell Script"
 PAUSE
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
