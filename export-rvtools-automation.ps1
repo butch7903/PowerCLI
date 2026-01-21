@@ -35,8 +35,10 @@ param(
 )
 
 #Set Confirm default to true
-If($Confirm.Count -eq 0 -Or !$Confirm){
-	$Confirm = $true
+If($Confirm -ne $false){
+	If($Confirm.Count -eq 0 -Or !$Confirm){
+		$Confirm = $true
+	}
 }
 
 ##Document Start Time
