@@ -73,7 +73,7 @@ $LOGDATE = Get-Date -format "MMM-dd-yyyy_HH-mm"
 ##Specify Log File Info
 $LOGFILENAME = "Log_" + $LOGDATE + ".txt"
 #Create Log Folder
-$LogFolder = $LOCATION.path+"\Log"
+$LogFolder = $LOCATION.path+"\log"
 If (Test-Path $LogFolder){
 	Write-Host "Log Directory Created. Continuing..."
 }
@@ -81,7 +81,7 @@ Else{
 	New-Item $LogFolder -type directory
 }
 #Specify Log File
-$LOGFILE = $LOCATION.path+"\Log\"+$LOGFILENAME
+$LOGFILE = $LOCATION.path+"\log\"+$LOGFILENAME
 
 ##################################Start of Script#########################################################
 
