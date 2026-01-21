@@ -2,8 +2,8 @@
     .NOTES
 	===========================================================================
 	Created by:		Russell Hamker
-	Date:			January 7,2021
-	Version:		2.0
+	Date:			January 20,2026
+	Version:		3.0
 	Twitter:		@butch7903
 	GitHub:			https://github.com/butch7903
 	===========================================================================
@@ -17,65 +17,65 @@
 	.NOTES
 		This script requires RVTools be installed on the local machine
 
-	.TROUBLESHOOTING
+		This script was most recently tested with RVTools 4.7.1
 		
+	.EXAMPLE
+	#Example - Interactive
+	$VCSA = "hamvc01.hamker.local"
+	./export-rvtools-automation.ps1 -VCSA $VCSA
+	
+	.EXAMPLE
+	#Example - Full Automation with no confirmation at end of script
+	$VCSA = "hamvc01.hamker.local"
+	$Confirm = $false
+	./export-rvtools-automation.ps1 -VCSA $VCSA -Confirm $Confirm
 #>
+param(
+
+		[Parameter(Mandatory=$true)][string]$VCSA,
+		[Parameter(Mandatory=$false)][boolean]$Confirm
+)
+
+#Set Confirm default to true
+If($Confirm.Count -eq 0 -Or !$Confirm){
+	$Confirm = $true
+}
 
 ##Document Start Time
 $STARTTIME = Get-Date -format "MMM-dd-yyyy HH-mm-ss"
 $STARTTIMESW = [Diagnostics.Stopwatch]::StartNew()
+Write-Host "Start Time $STARTTIME"
 
 ##Set Variables
 ##Get Current Path
-$pwd = pwd
-##If answerfile exists, Import it for use or create one.
-$AnswerFile = $pwd.path+"\"+"AnswerFile.csv"
-If (Test-Path $AnswerFile){
-##Import File
-Write-Host "Answer file found, importing answer file"$AnswerFile
-$Answer = Import-Csv $AnswerFile
-ForEach($Line in $Answer)
-{
-	$VERSION = $Line.Version
-	Write-Host "Version specified in file is:"$Version
-	$SUBVERSION = $Line.SubVersion
-	Write-Host "SubVersion specified in file is:"$SubVersion
-	$VCSA = $Line.VCSA
-	Write-Host "vCenter specified in file is:"$VCSA
-	$MONTHSTOKEEP = $Line.MonthsToKeep
-	Write-Host "Months to Keep RVTools Exports:"$MONTHSTOKEEP
-	
-	Write-Host "Continuing..."
-	Start-Sleep -Seconds 2
-}
-}
-Else {
-$Answers_List = @()
-$Answers="" | Select Version,SubVersion,VCSA,MonthsToKeep
-Write-Host "Answer file NOT found. Please input information to continue."
-$Version = "2"
-$Answers.Version = $Version
-$SubVersion = "0"
-$Answers.SubVersion = $SubVersion
-$VCSA = Read-Host "Please input the FQDN or IP of your VCSA
-Example: hamvc01.hamker.local
-"
-$Answers.VCSA = $VCSA
-$MONTHSTOKEEP = Read-Host "Please Input the Number of Months you wish to keep your Data
+$LOCATION = Get-Location
+
+#Test if monthstokeep.txt file exists
+$MonthsToKeepFile = "monthstokeep.txt"
+$MonthsToKeepLocation = $LOCATION.path + '/' + $MonthsToKeepFile
+If((Test-Path -Path $MonthsToKeepLocation) -eq $true){
+	Write-Host "Months to Keep File found. Importing"
+	$Monthsback = Get-Content $MonthsToKeepLocation
+}Else{
+	$MONTHSTOKEEP = Read-Host "Please Input the Number of Months you wish to keep your Data
 Example: -6 for 6 months"
-$Answers.MonthsToKeep = $MONTHSTOKEEP
-$Answers_List += $Answers
-$Answers_List | Format-Table -AutoSize
-Write-Host "Exporting Information to File"$AnswerFile
-$Answers_List | Export-CSV -NoTypeInformation $AnswerFile
+	Write-Host "Months to keep is $($MONTHSTOKEEP)"
+	Write-Host "Press any key to continue or CTRL-C to cancel"
+	PAUSE
+	#Export data to file
+	Write-Host "Creating monthstokeep.txt"
+	$MONTHSTOKEEP | Out-File -FilePath $MonthsToKeepLocation
+	#Import data from file
+	$Monthsback = Get-Content $MonthsToKeepLocation
 }
+	
 
 ##Get Date Info for Logging
 $LOGDATE = Get-Date -format "MMM-dd-yyyy_HH-mm"
 ##Specify Log File Info
 $LOGFILENAME = "Log_" + $LOGDATE + ".txt"
 #Create Log Folder
-$LogFolder = $pwd.path+"\Log"
+$LogFolder = $LOCATION.path+"\Log"
 If (Test-Path $LogFolder){
 	Write-Host "Log Directory Created. Continuing..."
 }
@@ -83,7 +83,7 @@ Else{
 	New-Item $LogFolder -type directory
 }
 #Specify Log File
-$LOGFILE = $pwd.path+"\Log\"+$LOGFILENAME
+$LOGFILE = $LOCATION.path+"\Log\"+$LOGFILENAME
 
 ##################################Start of Script#########################################################
 
@@ -96,15 +96,16 @@ Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 
 ##Clean up old Log Files
+
 #Delete all Log Files older than 5 day(s)
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
-Write-Host "Attempting to remove files older than 5 days"
+Write-Host "Attempting to remove Log files older than 5 days"
 $Daysback = "-5"
 $CurrentDateRemoval = Get-Date
 $DatetoDelete = $CurrentDateRemoval.AddDays($Daysback)
 Get-ChildItem $LogFolder| Where-Object { $_.LastWriteTime -lt $DatetoDelete } | Remove-Item -Confirm:$false
-Write-Host "Completed attempting to remove files older than 5 days"
+Write-Host "Completed attempting to remove Log files older than 5 days"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 
@@ -113,79 +114,119 @@ Write-Host "--------------------------------------------------------------------
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "Creating Export Folder and Variables"
 ##Specify Export File Info
-$EXPORTFILENAME = "RVTools_export_"+"$VCSA"+"_"+$LOGDATE+".xlsx"
+$EXPORTFILENAME = $LOGDATE + "_" + $VCSA + "_RVTools_export.xlsx"
 #Create Export Folder
-$EXPORTFOLDER = $pwd.path+"\Export"
+$EXPORTFOLDER = $LOCATION.path+"\Export"
 If (Test-Path $EXPORTFOLDER){
 	Write-Host "Export Directory Created. Continuing..."
 }Else{
 	New-Item $EXPORTFOLDER -type directory
 }
 #Specify Log File
-$EXPORTFILE = $pwd.path+"\Export\"+$EXPORTFILENAME
+#$EXPORTFILE = $LOCATION.path+"\Export\"+$EXPORTFILENAME
 Write-Host "Completed creating Export Folder and Variables"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 
 #Standard Variables
-$RVTOOLSEXE = "c:\program files (x86)\robware\rvtools\rvtools.exe" #Folder path to rvtools.exe
-$DATE = Get-Date -format "MM-dd-yyyy_HH-mm"
+#Test if Dell Version or old version
+If((Test-Path -Path "C:\Program Files (x86)\Dell\RVTools\RVTools.exe") -eq $true){
+	#Dell Path
+	$RVTOOLSEXE = "C:\Program Files (x86)\Dell\RVTools\RVTools.exe" #Folder path to rvtools.exe
+	$VERSIONTYPE = 'Dell'
+}Else{
+	$RVTOOLSEXE = "c:\program files (x86)\robware\rvtools\rvtools.exe"
+	$VERSIONTYPE = 'Original'
+}
+#$DATE = Get-Date -format "MM-dd-yyyy_HH-mm"
 $CURRENTDATE = Get-Date
-$FILENAME = "RVTools_export_"+"$VCSA"+"_"+$DATE+".xlsx"
+#$FILENAME = "RVTools_export_"+"$VCSA"+"_"+$DATE+".xlsx"
+
+##Check for VCSA Parameter
+If(!$VCSA){
+ Write-Error "No VCSA Specified"
+}
+IF($VCSA){
+	Write-Host "VCSA Specified in Parameter is $VCSA"
+}
 
 ##Create Secure AES Keys for User and Password Management
-$KeyFile = $pwd.path+"\"+"AES.key"
+Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
+$KeyFile = $LOCATION.path+"\"+"AES.key"
 If (Test-Path $KeyFile){
 	Write-Host "AES File Exists"
 	$Key = Get-Content $KeyFile
 	Write-Host "Continuing..."
-}
-Else {
+}Else{
 	$Key = New-Object Byte[] 16   # You can use 16, 24, or 32 for AES
 	[Security.Cryptography.RNGCryptoServiceProvider]::Create().GetBytes($Key)
 	$Key | out-file $KeyFile
 }
 
-##Create Secure XML Credential File for vCenter
-$MgrCreds = $pwd.path+"\"+"MgrCreds.xml"
+##Create Secure XML Credential File for vCenter/NSX Access
+$MgrCreds = $LOCATION.path+"\"+"$VCSA.xml"
 If (Test-Path $MgrCreds){
-	Write-Host "MgrCreds.xml file found"
+	Write-Host "$VCSA.xml file found"
 	Write-Host "Continuing..."
 	$ImportObject = Import-Clixml $MgrCreds
 	$SecureString = ConvertTo-SecureString -String $ImportObject.Password -Key $Key
 	$MyCredential = New-Object System.Management.Automation.PSCredential($ImportObject.UserName, $SecureString)
-}
-Else {
-	$newPScreds = Get-Credential -message "Enter vCenter admin creds here:"
-	#$rng = [System.Security.Cryptography.RNGCryptoServiceProvider]::Create()
-	#$rng.GetBytes($Key)
+}Else{
+	Write-Host "Credentials File Not Found, Please input Credentials"
+	$newPScreds = Get-Credential -message "Enter vCenter Admin Creds here:"
 	$exportObject = New-Object psobject -Property @{
 		UserName = $newPScreds.UserName
 		Password = ConvertFrom-SecureString -SecureString $newPScreds.Password -Key $Key
 	}
-	$exportObject | Export-Clixml MgrCreds.xml
+	$exportObject | Export-Clixml ($VCSA +".xml")
 	$MyCredential = $newPScreds
 }
+Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
+Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 
 ##Clean up Old RVTools Files Prior to Starting
-Write-Host "Deleting Old RVTools Exports"
-$DatetoDelete = $CurrentDate.AddMonths($MONTHSTOKEEP)
+Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
+Write-Host "Attempting Cleanup of Old RVTools Exports $($Monthsback) Months"
+$DatetoDelete = $CurrentDate.AddMonths($Monthsback)
 Get-ChildItem $ExportFolder -Filter *.xlsx | Where-Object { $_.LastWriteTime -lt $DatetoDelete } | Remove-Item -Confirm:$false
-Write-Host "Completed deleting Old RVTools Exports"
+Write-Host "Completed Cleanup of Old RVTools Exports"
+Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
+Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 
 ##Set VCSA Access Creds to Variables
 $VCSAUSER = $MyCredential.UserName
 $VCSASecurePassword = $MyCredential.Password
-$VCSAUnsecurePassword = (New-Object PSCredential "user",$VCSASecurePassword).GetNetworkCredential().Password
 
 ##Create RVTools Start Process Expression
 #Export CMD Commands
 #rvtools.exe -s %$VCServer% -u %username% -p %password% -c ExportAll2xlsx -d %$AttachmentDir% -f %$AttachmentFile%
-$RVTOOLSCOMMAND = "Start-Process -FilePath '$RVTOOLSEXE' -ArgumentList '-s $VCSA -u $VCSAUSER -p $VCSAUnsecurePassword -c ExportAll2xlsx -d $EXPORTFOLDER -f $EXPORTFILENAME' -Wait"
+#reference - https://downloads.dell.com/rvtools/rvtools.pdf
+#Original Method
+If($VERSIONTYPE -eq 'Original'){
+	$VCSAUnsecurePassword = (New-Object PSCredential "user",$VCSASecurePassword).GetNetworkCredential().Password
+	$RVTOOLSCOMMAND = "Start-Process -FilePath '$RVTOOLSEXE' -ArgumentList '-s $VCSA -u $VCSAUSER -p $VCSAUnsecurePassword -c ExportAll2xlsx -d $EXPORTFOLDER -f $EXPORTFILENAME' -Wait"
+}
+#Dell RVTools Method
+If($VERSIONTYPE -eq 'Dell'){
+	# Encrypt password for Dell RVTools
+	$encryptedpwd = $VCSASecurePassword | ConvertFrom-SecureString
+	# Prefix the encrypted password with the string "_RVToolsV3PWD" so that RVTools understands what needs to be done
+	$encryptedpwd = '_RVToolsV3PWD' + $encryptedpwd
+	#Document Command for RVTools Export
+	$RVTOOLSCOMMAND = "Start-Process -FilePath '$RVTOOLSEXE' -ArgumentList '-s $VCSA -u $VCSAUSER -p $encryptedpwd -c ExportAll2xlsx -d $EXPORTFOLDER -f $EXPORTFILENAME' -Wait"
+}
+
 #Run RVTools Expression
+Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "Starting RVTools Capture for VCSA $VCSA"
 Invoke-Expression $RVTOOLSCOMMAND
 Write-Host "Completed RVTools Capture for VCSA $VCSA"
+Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
+Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+
 
 ##Document Script Total Run time
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
@@ -208,8 +249,9 @@ Write-Host "--------------------------------------------------------------------
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "Script Completed for $VCSA"
-#Comment out the next 2 lines if you are setting this up to be fully automated.
+If($Confirm -eq $true){
 Write-Host "Press Enter to close this PowerShell Script"
 PAUSE
+}
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
