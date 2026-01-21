@@ -21,25 +21,11 @@
 	#Example - Interactive
 	$VCSA = "hamvc01.hamker.local"
 	./export-rvtools-automation.ps1 -VCSA $VCSA
-	
-	.EXAMPLE
-	#Example - Full Automation with no confirmation at end of script
-	$VCSA = "hamvc01.hamker.local"
-	$Confirm = $false
-	./export-rvtools-automation.ps1 -VCSA $VCSA -Confirm $Confirm
 #>
 param(
 
-		[Parameter(Mandatory=$true)][string]$VCSA,
-		[Parameter(Mandatory=$false)][boolean]$Confirm
+		[Parameter(Mandatory=$true)][string]$VCSA
 )
-
-#Set Confirm default to true
-If($Confirm -ne $false){
-	If($Confirm.Count -eq 0 -Or !$Confirm){
-		$Confirm = $true
-	}
-}
 
 ##Document Start Time
 $STARTTIME = Get-Date -format "MMM-dd-yyyy HH-mm-ss"
@@ -254,9 +240,5 @@ Write-Host "--------------------------------------------------------------------
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "Script Completed for $VCSA"
-If($Confirm -eq $true){
-Write-Host "Press Enter to close this PowerShell Script"
-PAUSE
-}
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
