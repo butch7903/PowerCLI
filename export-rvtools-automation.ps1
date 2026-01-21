@@ -16,8 +16,6 @@
 
 	.NOTES
 		This script requires RVTools be installed on the local machine
-
-		This script was most recently tested with RVTools 4.7.1
 		
 	.EXAMPLE
 	#Example - Interactive
@@ -114,13 +112,19 @@ Write-Host "--------------------------------------------------------------------
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "Creating Export Folder and Variables"
 ##Specify Export File Info
-$EXPORTFILENAME = $LOGDATE + "_" + $VCSA + "_RVTools_export.xlsx"
+$EXPORTFILENAME = (Get-Date -Format "M-d-yyyy_HH-mm") + "_" + $VCSA + "_RVTools_export.xlsx"
 #Create Export Folder
-$EXPORTFOLDER = $LOCATION.path+"\Export"
+$EXPORTFOLDER = $LOCATION.path+"\export"
 If (Test-Path $EXPORTFOLDER){
 	Write-Host "Export Directory Created. Continuing..."
 }Else{
 	New-Item $EXPORTFOLDER -type directory
+}
+$EXPORTFOLDERVCSA = $LOCATION.path+"\export\$VCSA"
+If (Test-Path $EXPORTFOLDERVCSA){
+	Write-Host "Export VCSA Directory Created - $($VCSA). Continuing..."
+}Else{
+	New-Item $EXPORTFOLDERVCSA -type directory
 }
 #Specify Log File
 #$EXPORTFILE = $LOCATION.path+"\Export\"+$EXPORTFILENAME
@@ -190,7 +194,7 @@ Write-Host "--------------------------------------------------------------------
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "Attempting Cleanup of Old RVTools Exports $($Monthsback) Months"
 $DatetoDelete = $CurrentDate.AddMonths($Monthsback)
-Get-ChildItem $ExportFolder -Filter *.xlsx | Where-Object { $_.LastWriteTime -lt $DatetoDelete } | Remove-Item -Confirm:$false
+Get-ChildItem $EXPORTFOLDERVCSA -Recurse -Filter *.xlsx | Where-Object { $_.LastWriteTime -lt $DatetoDelete } | Remove-Item -Confirm:$false
 Write-Host "Completed Cleanup of Old RVTools Exports"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
@@ -202,11 +206,10 @@ $VCSASecurePassword = $MyCredential.Password
 ##Create RVTools Start Process Expression
 #Export CMD Commands
 #rvtools.exe -s %$VCServer% -u %username% -p %password% -c ExportAll2xlsx -d %$AttachmentDir% -f %$AttachmentFile%
-#reference - https://downloads.dell.com/rvtools/rvtools.pdf
 #Original Method
 If($VERSIONTYPE -eq 'Original'){
 	$VCSAUnsecurePassword = (New-Object PSCredential "user",$VCSASecurePassword).GetNetworkCredential().Password
-	$RVTOOLSCOMMAND = "Start-Process -FilePath '$RVTOOLSEXE' -ArgumentList '-s $VCSA -u $VCSAUSER -p $VCSAUnsecurePassword -c ExportAll2xlsx -d $EXPORTFOLDER -f $EXPORTFILENAME' -Wait"
+	$RVTOOLSCOMMAND = "Start-Process -FilePath '$RVTOOLSEXE' -ArgumentList '-s $VCSA -u $VCSAUSER -p $VCSAUnsecurePassword -c ExportAll2xlsx -d $EXPORTFOLDERVCSA -f $EXPORTFILENAME' -Wait"
 }
 #Dell RVTools Method
 If($VERSIONTYPE -eq 'Dell'){
@@ -215,7 +218,7 @@ If($VERSIONTYPE -eq 'Dell'){
 	# Prefix the encrypted password with the string "_RVToolsV3PWD" so that RVTools understands what needs to be done
 	$encryptedpwd = '_RVToolsV3PWD' + $encryptedpwd
 	#Document Command for RVTools Export
-	$RVTOOLSCOMMAND = "Start-Process -FilePath '$RVTOOLSEXE' -ArgumentList '-s $VCSA -u $VCSAUSER -p $encryptedpwd -c ExportAll2xlsx -d $EXPORTFOLDER -f $EXPORTFILENAME' -Wait"
+	$RVTOOLSCOMMAND = "Start-Process -FilePath '$RVTOOLSEXE' -ArgumentList '-s $VCSA -u $VCSAUSER -p $encryptedpwd -c ExportAll2xlsx -d $EXPORTFOLDERVCSA -f $EXPORTFILENAME' -Wait"
 }
 
 #Run RVTools Expression
