@@ -12,6 +12,12 @@
 .DESCRIPTION
 	Use this script to enforce SecureBoot on all Server Reboots
 
+	Note:
+	A TPM Chip is required for this to be installed in your VMHost.
+	VMHost BIOS must be have SecureBoot Enabled prior to running this operation.
+	HowTo: 
+	https://www.dell.com/support/kbdoc/en-us/000158364/vxrail-how-do-enable-and-disable-uefi-secure-boot
+
 	Reference: VMW-ESXI-01125
 	https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-5-2-and-earlier/4-5/security-and-compliance-configuration-for-vmware-cloud-foundation-4-5/securing-esxi-hosts/configure-security-setting-using-powercli-1.html#:~:text=You%20must%20evacuate%20the%20host%20and%20gracefully%20reboot%20for%20changes%20to%20take%20effect.%20VMW%2DESXI%2D01125.
 
