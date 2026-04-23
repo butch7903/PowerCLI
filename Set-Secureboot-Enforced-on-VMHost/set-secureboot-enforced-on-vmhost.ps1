@@ -96,24 +96,50 @@ Set-VMHost -VMHost $VMHOST -State "Maintenance" | Out-Null
 Write-Host "Checking ESXI VIB Signatures - $($VMHOST)"
 $esxcli = Get-EsxCli -VMHost $VMHOST -V2
 $SignatureList = $esxcli.software.vib.signature.verify.Invoke()
-If($SignatureList.SignatureVerification -notmatch "Succeeded"){
-	$SignatureVerificationFailed = $SignatureList | Where-Object {$_.SignatureVerification -notmatch "Succeeded"}
+If($SignatureList.SignatureVerification -notmatch "Succeeded|Not Applicable"){
+	$SignatureVerificationFailed = $SignatureList | Where-Object {$_.SignatureVerification -notmatch "Succeeded|Not Applicable"}
 	Write-Output $SignatureVerificationFailed
 	Write-Error "VIB Signature Verification Failure has occured. Please review above VIBs before implementing SecureBoot - $($VMHOST)" -ErrorAction Stop
 }Else{
 	Write-Host "All ESXi VIB Signature Verification has completed. All VIBs are SignatureVerification Succeeded (healthy) - $($VMHOST)" -ForegroundColor Green
 }
 
+# Validate TPM is present
+Write-Host "Validating TPM Module is Present - $($VMHost)"
+$esxcli = Get-EsxCli -VMHost $VMHOST -V2
+$TPMCHECK = $esxcli.hardware.trustedboot.get.invoke()
+If($TPMCHECK.TpmPresent -ne "true"){
+	Write-Output $TPMCHECK
+	Write-Host "Check BIOS/Hardware and ensure: TPMSecurity is Enabled, SecureBoot is Enabled, and TPM2 Algorithm is set to SHA256"
+	Write-Error "TPM Module not Present - $($VMHost)" -ErrorAction Stop
+}Else{
+	Write-Host "Completed validating TPM Module is Present - $($VMHost)" -ForegroundColor Green
+}
+
 # Enforce SecureBoot as required at all Boots
-Write-Host "Enforcing RequireSecureBoot on all Reboots - $($VMHOST)"
+Write-Host "Enforcing SecureBoot - $($VMHOST)"
 $esxcli = Get-EsxCli -VMHost $VMHOST -V2
 $arguments = $esxcli.system.settings.encryption.set.CreateArgs()
 # Note: Must Set Encryption Mode to TPM
+Write-Host "Setting System Encryption Mode to TPM - $($VMHOST)"
 $arguments.mode = "TPM"
+$OUTPUT = $null
+$OUTPUT = $esxcli.system.settings.encryption.set.Invoke($arguments)
+If($OUTPUT -ne "true"){
+	Write-Host "Check BIOS Settings and ensure: SecureBoot is Enabled and TPM2 Algorithm is set to SHA256"
+	Write-Error "Could NOT Set Encryption Mode to TPM - $($VMHOST)" -ErrorAction Stop
+}Else{
+	Write-Host "Completed setting System Encryption Mode to TPM - $($VMHOST)" -ForegroundColor Green
+}
+Write-Host "Enforcing RequireSecureBoot on all Reboots - $($VMHOST)"
+$arguments = $esxcli.system.settings.encryption.set.CreateArgs()
 $arguments.requiresecureboot = $true
+$OUTPUT = $null
 $OUTPUT = $esxcli.system.settings.encryption.set.Invoke($arguments)
 If($OUTPUT -ne "true"){
 	Write-Error "Could NOT Enforce RequireSecureBoot on all Reboots - $($VMHOST)" -ErrorAction Stop
+}Else{
+	Write-Host "Completed enforcing RequireSecureBoot on all Reboots - $($VMHOST)" -ForegroundColor Green
 }
 
 # Validate System Encryption Mode is set to TPM
