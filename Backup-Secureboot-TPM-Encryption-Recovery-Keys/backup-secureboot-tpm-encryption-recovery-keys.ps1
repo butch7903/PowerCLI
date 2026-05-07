@@ -55,7 +55,19 @@ $STARTTIME = Get-Date -format "MMM-dd-yyyy HH-mm-ss"
 $STARTTIMESW = [Diagnostics.Stopwatch]::StartNew()
 
 #Import Module
-Import-Module VMware.PowerCLI
+Write-Host "Validating Installed PowerShell Modules needed for this process..."
+$ModuleList = Get-InstalledModule | Where-Object {$_.Name -match "PowerVCF|VMware.PowerCLI"}
+If($ModuleList.Name -contains "PowerVCF"){
+	Write-Host "Importing PowerShell Module PowerVCF"
+	Import-Module -Name PowerVCF # -Verbose
+}Else{
+	Write-Host "Importing PowerShell Module VMware.PowerCLI"
+	Import-Module -Name VMware.PowerCLI # -Verbose
+}
+If($ModuleList.Name -notmatch "PowerVCF|VMware.PowerCLI"){
+	Write-Warning "PowerShell Module PowerVCF or VMware.PowerCLI not found"
+	Write-Error "Install VMware PowerCLI or PowerVCF Module" -ErrorAction Stop
+}
 
 ##Get Current Path
 $LOCATION = Get-Location
@@ -64,24 +76,24 @@ $LOCATION = Get-Location
 $LOGDATE = Get-Date -format "MMM-dd-yyyy_HH-mm"
 ##Specify Log File Info
 If($Cluster){
-	$LOGFILENAME = $LOGDATE + "-$Cluster-log" + ".txt"
+	$LOGFILENAME = $LOGDATE + "-" + $Cluster + "-log.txt"
 }Else{
-	$LOGFILENAME = $LOGDATE + "-backup-up-tpm-recovery-keys-log" + ".txt"
+	$LOGFILENAME = $LOGDATE + "-backup-up-tpm-recovery-keys-log.txt"
 }
 #Create Log Folder
-$LogFolder = $LOCATION.path+"\log"
+$LogFolder = $LOCATION.path + "\log"
 If (Test-Path $LogFolder){
 	Write-Host "Log Directory Created. Continuing..."
 }Else{
 	New-Item $LogFolder -type directory
 }
 #Specify Log File
-$LOGFILE = $LOCATION.path+"\log\"+$LOGFILENAME
+$LOGFILE = $LOCATION.path + "\log\" + $LOGFILENAME
 
 ##Clean up old logs
 Write-Host "Cleaning up logs that are over 30 days old"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
-Get-ChildItem –Path $LogFolder -Recurse | Where-Object {($_.LastWriteTime -lt (Get-Date).AddDays(-30))} | Remove-Item -Recurse -Force -Confirm:$false
+Get-ChildItem -Path $LogFolder -Recurse | Where-Object {($_.LastWriteTime -lt (Get-Date).AddDays(-30))} | Remove-Item -Recurse -Force -Confirm:$false
 
 ##Starting Logging
 Start-Transcript -path $LOGFILE -Append
@@ -92,7 +104,6 @@ Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 #Validate that the Self Signed VCSA Certificates do not cause an issue with PowerCLI Connecting to the VCSA
 Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Scope User -Confirm:$false | Out-Null
 
-
 ##Check for VCSA Parameter
 If(!$VCSA){
  Write-Error "No VCSA Specified"
@@ -102,7 +113,7 @@ IF($VCSA){
 }
 
 ##Create Secure AES Keys for User and Password Management
-$KeyFile = $LOCATION.path+"\"+"AES.key"
+$KeyFile = $LOCATION.path + "\" + "AES.key"
 If (Test-Path $KeyFile){
 	Write-Host "AES File Exists"
 	$Key = Get-Content $KeyFile
@@ -114,7 +125,7 @@ If (Test-Path $KeyFile){
 }
 
 ##Create Secure XML Credential File for vCenter/NSX Access
-$MgrCreds = $LOCATION.path+"\"+"$VCSA.xml"
+$MgrCreds = $LOCATION.path + "\" + "$VCSA.xml"
 If (Test-Path $MgrCreds){
 	Write-Host "$VCSA.xml file found"
 	Write-Host "Continuing..."
@@ -124,14 +135,12 @@ If (Test-Path $MgrCreds){
 }Else{
 	Write-Host "Credentials File Not Found, Please input Credentials"
 	$newPScreds = Get-Credential -message "Enter vCenter Admin Creds here:"
-	#$rng = [System.Security.Cryptography.RNGCryptoServiceProvider]::Create()
-	#$rng.GetBytes($Key)
 	$exportObject = New-Object psobject -Property @{
 		UserName = $newPScreds.UserName
 		Password = ConvertFrom-SecureString -SecureString $newPScreds.Password -Key $Key
 	}
 
-	$exportObject | Export-Clixml ($VCSA +".xml")
+	$exportObject | Export-Clixml ($VCSA + ".xml")
 	$MyCredential = $newPScreds
 }
 
@@ -221,7 +230,7 @@ ForEach($VMHost in $VMHostList){
 	
 	# If Alarm Exists, clear It
 	If($TriggeredAlarm.Count -gt 0){
-		Write-Warning " Alarm -> TPM Encryption Recovery Key Backup Alarm found on VMHost - $($VMHost)"
+		Write-Warning " Alarm - TPM Encryption Recovery Key Backup Alarm - found on VMHost - $($VMHost)"
 		$AlarmObj = New-Object Vmware.Vim.ManagedObjectReference
 		$AlarmObj.type = $TriggeredAlarm.Alarm.Type
 		$AlarmObj.value = $TriggeredAlarm.Alarm.Value
@@ -230,23 +239,13 @@ ForEach($VMHost in $VMHostList){
 		$AlarmHost = $VMHostObj | Get-View 
 		
 		# Ack Alarm
-		Write-Host "Acknowledging Alarm -> TPM Encryption Recovery Key Backup Alarm on VMHost - $($VMHost)"
+		Write-Host "Acknowledging Alarm - TPM Encryption Recovery Key Backup Alarm - on VMHost - $($VMHost)"
 		$AlarmManager.AcknowledgeAlarm($Alarm.MoRef, $AlarmHost.MoRef)
 		$AlarmManager.ClearTriggeredAlarms($Alarm.MoRef, $AlarmHost.MoRef)
 		
 		# Clear Alarm
-		Write-Host "Clearing Triggered Alarm -> TPM Encryption Recovery Key Backup Alarm on VMHost - $($VMHost)"
-		<# This commented out code does not perm clear error. Comes back after maintenance mode.
-		$AlarmDefinition = Get-AlarmDefinition -Name "TPM Encryption Recovery Key Backup Alarm"
-		$AlarmId = ($AlarmDefinition).Id
-		# Disable/Enable alarm to Clear - Does not perm clear error. Comes back after maintenance mode/reboot.
-		$VMHostObj.ExtensionData.TriggeredAlarmState | `
-		Where-Object Alarm -eq $AlarmId | `
-		ForEach-Object -Process {
-			$AlarmManager.DisableAlarm( $_.Alarm,$_.Entity)
-			$AlarmManager.EnableAlarm( $_.Alarm,$_.Entity)
-		}
-		#>
+		Write-Host "Clearing Triggered Alarm -  TPM Encryption Recovery Key Backup Alarm - on VMHost - $($VMHost)"
+		
 		# Only method to properly clear alarm - clears for all hosts first time
 		$filter = New-Object VMware.Vim.AlarmFilterSpec
 		$filter.Status = [VMware.Vim.ManagedEntityStatus]::$($TriggeredAlarm.OverallStatus) #gray green yellow red
@@ -255,10 +254,10 @@ ForEach($VMHost in $VMHostList){
 		$AlarmManager.ClearTriggeredAlarms($filter)
 	
 	}Else{
-		Write-Host "Alarm -> TPM Encryption Recovery Key Backup Alarm NOT found on VMHost - $($VMHost)"
+		Write-Host "Alarm - TPM Encryption Recovery Key Backup Alarm - NOT found on VMHost - $($VMHost)"
 	}
 	
-	#Add Temp Array to Output Array
+	# Add Temp Array to Output Array
 	$OutputArray += $TempArray
 	
 	# Document each VMHost
@@ -273,14 +272,14 @@ If($Cluster){
 	$ExportFileName = $LOGDATE + "-backup-up-tpm-recovery-keys" + ".csv"
 }
 #Create Log Folder
-$ExportFolder = $LOCATION.path+"\export"
+$ExportFolder = $LOCATION.path + "\export"
 If (Test-Path $ExportFolder){
 	Write-Host "Export Directory Created. Continuing..."
 }Else{
 	New-Item $ExportFolder -type directory
 }
 #Specify Export File
-$ExportFile = $LOCATION.path+"/export/"+$ExportFileName
+$ExportFile = $LOCATION.path + "/export/" + $ExportFileName
 
 ## Output Array to CSV
 Write-Host "Outputing Backup to path:"
