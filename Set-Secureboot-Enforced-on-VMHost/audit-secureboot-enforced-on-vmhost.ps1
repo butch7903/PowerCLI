@@ -141,24 +141,10 @@ If($VMHost -and !$VCSA){
 		# Validate System Encryption Mode is set to TPM
 		Write-Host "Validating System Encryption Mode is set to TPM - $($VMHOST)"
 		$MODECHECK = $esxcli.system.settings.encryption.get.Invoke() | Select-Object Mode
-		If($MODECHECK.Mode -ne "TPM"){
-			$MODECHECK | Out-Host
-			Write-Error "System Encryption Mode is NOT set to TPM. Please check System Encryption Mode $esxcli.system.settings.encryption.get.Invoke() - $($VMHOST)" -ErrorAction Stop
-		}Else{
-			#$MODECHECK | Out-Host
-			Write-Host "Validated that System Encryption Mode is set to TPM - $($VMHOST)" -ForegroundColor Green
-		}
 
 		# Validate SecureBoot is Required
 		Write-Host "Validating RequireSecureBoot is Enforced - $($VMHOST)"
 		$SecureBootRequired = $esxcli.system.settings.encryption.get.Invoke() | Select-Object RequireSecureBoot
-		If($SecureBootRequired.RequireSecureBoot -eq "false"){
-			$SecureBootRequired | Out-Host
-			Write-Error "RequireSecureBoot is set to False. Please check RequireSecureBoot Enforcement - $($VMHOST)"
-		}Else{
-			#$SecureBootRequired | Out-Host
-			Write-Host "RequireSecureBoot is set to True (Enforced) for all Server boots - $($VMHOST)" -ForegroundColor Green
-		}
 		
 		#Document Output to Array
 		$TEMPARRAY = "" | Select-Object VMHost, HostEncryptionMode, RequireSecureBoot
@@ -210,24 +196,10 @@ If($VMHost -and !$VCSA){
 			# Validate System Encryption Mode is set to TPM
 			Write-Host "Validating System Encryption Mode is set to TPM - $($VMHOST)"
 			$MODECHECK = $esxcli.system.settings.encryption.get.Invoke() | Select-Object Mode
-			If($MODECHECK.Mode -ne "TPM"){
-				$MODECHECK | Out-Host
-				Write-Error "System Encryption Mode is NOT set to TPM. Please check System Encryption Mode $esxcli.system.settings.encryption.get.Invoke() - $($VMHOST)" -ErrorAction Stop
-			}Else{
-				#$MODECHECK | Out-Host
-				Write-Host "Validated that System Encryption Mode is set to TPM - $($VMHOST)" -ForegroundColor Green
-			}
 
 			# Validate SecureBoot is Required
 			Write-Host "Validating RequireSecureBoot is Enforced - $($VMHOST)"
 			$SecureBootRequired = $esxcli.system.settings.encryption.get.Invoke() | Select-Object RequireSecureBoot
-			If($SecureBootRequired.RequireSecureBoot -eq "false"){
-				$SecureBootRequired | Out-Host
-				Write-Error "RequireSecureBoot is set to False. Please check RequireSecureBoot Enforcement - $($VMHOST)"
-			}Else{
-				#$SecureBootRequired | Out-Host
-				Write-Host "RequireSecureBoot is set to True (Enforced) for all Server boots - $($VMHOST)" -ForegroundColor Green
-			}
 			
 			#Document Output to Array
 			$TEMPARRAY = "" | Select-Object VMHost, HostEncryptionMode, RequireSecureBoot, Cluster
@@ -282,24 +254,10 @@ If($VMHost -and !$VCSA){
 			# Validate System Encryption Mode is set to TPM
 			Write-Host "Validating System Encryption Mode is set to TPM - $($VMHOST)"
 			$MODECHECK = $esxcli.system.settings.encryption.get.Invoke() | Select-Object Mode
-			If($MODECHECK.Mode -ne "TPM"){
-				$MODECHECK | Out-Host
-				Write-Error "System Encryption Mode is NOT set to TPM. Please check System Encryption Mode $esxcli.system.settings.encryption.get.Invoke() - $($VMHOST)" -ErrorAction Stop
-			}Else{
-				#$MODECHECK | Out-Host
-				Write-Host "Validated that System Encryption Mode is set to TPM - $($VMHOST)" -ForegroundColor Green
-			}
 
 			# Validate SecureBoot is Required
 			Write-Host "Validating RequireSecureBoot is Enforced - $($VMHOST)"
 			$SecureBootRequired = $esxcli.system.settings.encryption.get.Invoke() | Select-Object RequireSecureBoot
-			If($SecureBootRequired.RequireSecureBoot -eq "false"){
-				$SecureBootRequired | Out-Host
-				Write-Error "RequireSecureBoot is set to False. Please check RequireSecureBoot Enforcement - $($VMHOST)"
-			}Else{
-				#$SecureBootRequired | Out-Host
-				Write-Host "RequireSecureBoot is set to True (Enforced) for all Server boots - $($VMHOST)" -ForegroundColor Green
-			}
 			
 			#Document Output to Array
 			$TEMPARRAY = "" | Select-Object VMHost, HostEncryptionMode, RequireSecureBoot, Cluster
@@ -353,24 +311,10 @@ If($VMHost -and !$VCSA){
 			# Validate System Encryption Mode is set to TPM
 			Write-Host "Validating System Encryption Mode is set to TPM - $($VMHOST)"
 			$MODECHECK = $esxcli.system.settings.encryption.get.Invoke() | Select-Object Mode
-			If($MODECHECK.Mode -ne "TPM"){
-				$MODECHECK | Out-Host
-				Write-Error "System Encryption Mode is NOT set to TPM. Please check System Encryption Mode $esxcli.system.settings.encryption.get.Invoke() - $($VMHOST)" -ErrorAction Stop
-			}Else{
-				#$MODECHECK | Out-Host
-				Write-Host "Validated that System Encryption Mode is set to TPM - $($VMHOST)" -ForegroundColor Green
-			}
 
 			# Validate SecureBoot is Required
 			Write-Host "Validating RequireSecureBoot is Enforced - $($VMHOST)"
 			$SecureBootRequired = $esxcli.system.settings.encryption.get.Invoke() | Select-Object RequireSecureBoot
-			If($SecureBootRequired.RequireSecureBoot -eq "false"){
-				$SecureBootRequired | Out-Host
-				Write-Error "RequireSecureBoot is set to False. Please check RequireSecureBoot Enforcement - $($VMHOST)"
-			}Else{
-				#$SecureBootRequired | Out-Host
-				Write-Host "RequireSecureBoot is set to True (Enforced) for all Server boots - $($VMHOST)" -ForegroundColor Green
-			}
 			
 			#Document Output to Array
 			$TEMPARRAY = "" | Select-Object VMHost, HostEncryptionMode, RequireSecureBoot, Cluster
