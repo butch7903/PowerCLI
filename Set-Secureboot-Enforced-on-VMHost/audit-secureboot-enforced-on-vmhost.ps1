@@ -154,7 +154,7 @@ If($VMHost -and !$VCSA){
 		$SecureBootRequired = $esxcli.system.settings.encryption.get.Invoke() | Select-Object RequireSecureBoot
 		If($SecureBootRequired.RequireSecureBoot -eq "false"){
 			$SecureBootRequired | Out-Host
-			Write-Error "RequireSecureBoot is set to False. Please check RequireSecureBoot Enforcement - $($VMHOST)" -ErrorAction Stop
+			Write-Error "RequireSecureBoot is set to False. Please check RequireSecureBoot Enforcement - $($VMHOST)"
 		}Else{
 			#$SecureBootRequired | Out-Host
 			Write-Host "RequireSecureBoot is set to True (Enforced) for all Server boots - $($VMHOST)" -ForegroundColor Green
@@ -223,7 +223,7 @@ If($VMHost -and !$VCSA){
 			$SecureBootRequired = $esxcli.system.settings.encryption.get.Invoke() | Select-Object RequireSecureBoot
 			If($SecureBootRequired.RequireSecureBoot -eq "false"){
 				$SecureBootRequired | Out-Host
-				Write-Error "RequireSecureBoot is set to False. Please check RequireSecureBoot Enforcement - $($VMHOST)" -ErrorAction Stop
+				Write-Error "RequireSecureBoot is set to False. Please check RequireSecureBoot Enforcement - $($VMHOST)"
 			}Else{
 				#$SecureBootRequired | Out-Host
 				Write-Host "RequireSecureBoot is set to True (Enforced) for all Server boots - $($VMHOST)" -ForegroundColor Green
@@ -266,7 +266,7 @@ If($VMHost -and !$VCSA){
 			}
 		}Until($VISERVER.Name -Or $COUNT -eq $ValidationTimeout)
 		If($COUNT -eq $ValidationTimeout){
-			Write-Error "Could not connect to VCSA - $($VCSA), Please check Network and DNS Resolution." -ErrorAction Stop
+			Write-Error "Could not connect to VCSA - $($VCSA), Please check Network and DNS Resolution."
 		}
 		Write-Progress -Completed -Activity "make progress bar disappear" -ErrorAction SilentlyContinue
 
@@ -295,7 +295,7 @@ If($VMHost -and !$VCSA){
 			$SecureBootRequired = $esxcli.system.settings.encryption.get.Invoke() | Select-Object RequireSecureBoot
 			If($SecureBootRequired.RequireSecureBoot -eq "false"){
 				$SecureBootRequired | Out-Host
-				Write-Error "RequireSecureBoot is set to False. Please check RequireSecureBoot Enforcement - $($VMHOST)" -ErrorAction Stop
+				Write-Error "RequireSecureBoot is set to False. Please check RequireSecureBoot Enforcement - $($VMHOST)"
 			}Else{
 				#$SecureBootRequired | Out-Host
 				Write-Host "RequireSecureBoot is set to True (Enforced) for all Server boots - $($VMHOST)" -ForegroundColor Green
@@ -337,7 +337,7 @@ If($VMHost -and !$VCSA){
 			}
 		}Until($VISERVER.Name -Or $COUNT -eq $ValidationTimeout)
 		If($COUNT -eq $ValidationTimeout){
-			Write-Error "Could not connect to VCSA - $($VCSA), Please check Network and DNS Resolution." -ErrorAction Stop
+			Write-Error "Could not connect to VCSA - $($VCSA), Please check Network and DNS Resolution."
 		}
 		Write-Progress -Completed -Activity "make progress bar disappear" -ErrorAction SilentlyContinue
 
@@ -366,7 +366,7 @@ If($VMHost -and !$VCSA){
 			$SecureBootRequired = $esxcli.system.settings.encryption.get.Invoke() | Select-Object RequireSecureBoot
 			If($SecureBootRequired.RequireSecureBoot -eq "false"){
 				$SecureBootRequired | Out-Host
-				Write-Error "RequireSecureBoot is set to False. Please check RequireSecureBoot Enforcement - $($VMHOST)" -ErrorAction Stop
+				Write-Error "RequireSecureBoot is set to False. Please check RequireSecureBoot Enforcement - $($VMHOST)"
 			}Else{
 				#$SecureBootRequired | Out-Host
 				Write-Host "RequireSecureBoot is set to True (Enforced) for all Server boots - $($VMHOST)" -ForegroundColor Green
