@@ -52,7 +52,19 @@ If($ValidationTime -lt 1){
 }
 
 #Import Module
-Import-Module VMware.PowerCLI
+Write-Host "Validating Installed PowerShell Modules needed for this process..."
+$ModuleList = Get-InstalledModule | Where-Object {$_.Name -match "PowerVCF|VMware.PowerCLI"}
+If($ModuleList.Name -contains "PowerVCF"){
+	Write-Host "Importing PowerShell Module PowerVCF"
+	Import-Module -Name PowerVCF # -Verbose
+}Else{
+	Write-Host "Importing PowerShell Module VMware.PowerCLI"
+	Import-Module -Name VMware.PowerCLI # -Verbose
+}
+If($ModuleList.Name -notmatch "PowerVCF|VMware.PowerCLI"){
+	Write-Warning "PowerShell Module PowerVCF or VMware.PowerCLI not found"
+	Write-Error "Install VMware PowerCLI or PowerVCF Module" -ErrorAction Stop
+}
 
 #Validate that the Self Signed VCSA Certificates do not cause an issue with PowerCLI Connecting to the VCSA
 Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Scope User -Confirm:$false | Out-Null
