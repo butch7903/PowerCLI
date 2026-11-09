@@ -19,7 +19,7 @@
 	.EXAMPLE
 	#Example - View Only for a Whole VCSA
 	$VCSA = "hamvc01.hamker.local"
-	$VCSAUSERNAME = "rhamker"
+	$VCSAUSERNAME = "rhamker@hamker.local"
 	If(!$CREDENTIAL){
 		$CREDENTIAL = Get-Credential -Message "Please Provide VCSA Creds" -Username $VCSAUSERNAME
 	}
@@ -224,8 +224,8 @@ $ESXCLI = Get-EsxCli -VMHost $CHKVMHOST -V2
 $CHKVIBs = $ESXCLI.software.vib.get.Invoke() | Select-Object Name, ID, Description, Version, CreationDate | Sort-Object Name
 Write-Host "Completed getting VIBs List"
 Write-Host "Exporting VIB List to CSV - $EXPORTFILE"
-$CHKVIBs | Export-CSV -Path $EXPORTFILE -NoTypeInformation -ErrorAction Stop
-Write-Host "Completed Exporting VIB List to CSV - $EXPORTFILE" -ForegroundColor Green
+$CHKVIBs | Export-CSV -Path $EXPORTFILE -NoTypeInformation
+Write-Host "Completed Exporting VIB List to CSV - $EXPORTFILE"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 
