@@ -1,12 +1,10 @@
 <#
     .NOTES
-	===========================================================================
 	Created by:		Russell Hamker
-	Date:			December 1,2020
-	Version:		1.1
+	Date:			November 9,2026
+	Version:		2.0
 	Twitter:		@butch7903
 	GitHub:			https://github.com/butch7903
-	===========================================================================
 
 	.SYNOPSIS
 		This script removes specified VIBs from a selected VMHost
@@ -14,49 +12,134 @@
 	.DESCRIPTION
 		Use this script to prep a VMHost for NSX-T
 
-	.TROUBLESHOOTING
-		
-#>
+	.EXAMPLE
+	#Example - Single Host
+	$VCSA = "hamvc01.hamker.local"
+	$VCSAUSERNAME = "rhamker@hamker.local"
+	$VIBListtoRemove = "qcnic","qfle3i","qfle3f","qfle3"
+	$VMHost = "hamesxi02.hamker.local"
+	If(!$CREDENTIAL){
+		$CREDENTIAL = Get-Credential -Message "Please Provide VCSA Creds" -Username $VCSAUSERNAME
+	}
+	.\Remove_Extra_VIBs_from_VMHost.ps1 `
+	-VCSA $VCSA `
+	-Credential $CREDENTIAL `
+	-VIBListtoRemove $VIBListtoRemove `
+	-VMHost $VMHost
 
-##Get Current Path
-$pwd = pwd
+	.EXAMPLE
+	#Example - Single Host with Restart
+	$VCSA = "hamvc01.hamker.local"
+	$VCSAUSERNAME = "rhamker@hamker.local"
+	$VIBListtoRemove = "qcnic","qfle3i","qfle3f","qfle3"
+	$VMHost = "hamesxi02.hamker.local"
+	$RestartVMHost = $true
+	If(!$CREDENTIAL){
+		$CREDENTIAL = Get-Credential -Message "Please Provide VCSA Creds" -Username $VCSAUSERNAME
+	}
+	.\Remove_Extra_VIBs_from_VMHost.ps1 `
+	-VCSA $VCSA `
+	-Credential $CREDENTIAL `
+	-VIBListtoRemove $VIBListtoRemove `
+	-VMHost $VMHost `
+	-RestartVMHost $RestartVMHost
+
+	.EXAMPLE
+	#Example - Multiple Hosts with Restart - Does each host in Sync order
+	$VMHostList = "hamesxi03.hamker.local","hamesxi04.hamker.local"
+	$VCSA = "hamvc01.hamker.local"
+	$VCSAUSERNAME = "rhamker@hamker.local"
+	$VIBListtoRemove = "qcnic","qfle3i","qfle3f","qfle3"
+	$RestartVMHost = $true
+	If(!$CREDENTIAL){
+		$CREDENTIAL = Get-Credential -Message "Please Provide VCSA Creds" -Username $VCSAUSERNAME
+	}
+	ForEach($VMHost in $VMHostList){
+		.\Remove_Extra_VIBs_from_VMHost.ps1 `
+		-VCSA $VCSA `
+		-Credential $CREDENTIAL `
+		-VIBListtoRemove $VIBListtoRemove `
+		-VMHost $VMHost `
+		-RestartVMHost $RestartVMHost
+	}
+#>
+param(
+	[Parameter(Mandatory=$false)][string]$VCSA,
+	[Parameter(Mandatory=$false)][System.Management.Automation.PSCredential]$Credential,
+	[Parameter(Mandatory=$true)][string[]]$VIBListtoRemove,
+	[Parameter(Mandatory=$false)][string]$VMHost,
+	[Parameter(Mandatory=$false)][boolean]$RestartVMHost
+)
+
+##Check if Modules are installed, if so load them, else install them
+if (Get-InstalledModule -Name VMware.PowerCLI -MinimumVersion 11.4) {
+	Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+	Write-Host "PowerShell Module VMware PowerCLI required minimum version was found previously installed"
+	Write-Host "Importing PowerShell Module VMware PowerCLI"
+	Import-Module -Name VMware.VimAutomation.Core
+	Write-Host "Importing PowerShell Module VMware PowerCLI Completed"
+	Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+	#CLEAR
+} else {
+	Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+	Write-Host "PowerShell Module VMware PowerCLI does not exist"
+	Write-Host "Setting Micrsoft PowerShell Gallery as a Trusted Repository"
+	Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+	Write-Host "Verifying that NuGet is at minimum version 2.8.5.201 to proceed with update"
+	Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Confirm:$false
+	Write-Host "Uninstalling any older versions of the VMware PowerCLI Module"
+	Get-Module VMware.PowerCLI | Uninstall-Module -Force
+	Write-Host "Installing Newest version of VMware PowerCLI PowerShell Module"
+	Install-Module -Name VMware.PowerCLI -Scope AllUsers
+	Write-Host "Creating a Desktop shortcut to the VMware PowerCLI Module"
+	$AppLocation = "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+	$Arguments = '-noe -c "Import-Module VMware.PowerCLI"'
+	$WshShell = New-Object -ComObject WScript.Shell
+	$Shortcut = $WshShell.CreateShortcut("$Home\Desktop\VMware PowerCLI.lnk")
+	$Shortcut.TargetPath = $AppLocation
+	$Shortcut.Arguments = $Arguments
+	$ShortCut.Hotkey = "CTRL+SHIFT+V"
+	$Shortcut.IconLocation = "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe,1"
+	$Shortcut.Description ="Launch VMware PowerCLI"
+	$Shortcut.WorkingDirectory ="C:\"
+	$Shortcut.Save()
+	Write-Host "Shortcut Created"
+	Write-Host "You may use the CTRL+SHIFT+V method to open VMware PowerCLI"
+	Write-Host "Importing PowerShell Module VMware PowerCLI"
+	Import-Module -Name VMware.PowerCLI
+	Write-Host "PowerShell Module VMware PowerCLI Loaded"
+	Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+	#Clear
+}
 
 ##Document Start Time
 $STARTTIME = Get-Date -format "MMM-dd-yyyy HH-mm-ss"
 $STARTTIMESW = [Diagnostics.Stopwatch]::StartNew()
 
-#Type in VCSA Name
-$VCSA = read-host "Please Provide VCSA FQDN"
+##Get Current Path
+$LOCATION = Get-Location
 
-Import-Module VMware.PowerCLI
-
-##Updating PS Window Configuration
-Write-Host "-----------------------------------------------------------------------------------------------------------------------"
-Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
-Write-Host "Updating PowerShell Window info"
-$pshost = get-host
-$pswindow = $pshost.ui.rawui
-#$newsize = $pswindow.buffersize
-#$newsize.height = 30000
-#$newsize.width = 130
-#$pswindow.buffersize = $newsize
-#$newsize = $pswindow.windowsize
-#$newsize.height = (get-host).UI.RawUI.MaxWindowSize.Height
-#$newsize.width = 130
-$pswindow.windowtitle = "Please Enter Credentials"
-#$pswindow.windowsize = $newsize
-Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
-Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+If(!$VCSA){
+	##Select VCSA
+	Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+	Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
+	Write-Host "Start Time - $STARTTIME"
+	##Get VCSA
+	$VCSA = Read-Host "Please provide the VCSA FQDN"
+	Write-Host "VCSA Selected is $VCSA"
+	Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
+	Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+}
 
 ##Provide Credentials
 #CLS
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
-If(!$MyCredential)
+If(!$Credential)
 {
 	Write-Host "Please Provide VCSA Administrator based Credentials for VCSA $VCSA"
-	$MyCredential = Get-Credential -Message "Please Provide VCSA Creds"
-	Write-Host "Credential UserName provided is:"$MyCredential.UserName
+	$Credential = Get-Credential -Message "Please Provide VCSA Creds"
+	Write-Host "Credential UserName provided is:"$Credential.UserName
 }
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
@@ -84,35 +167,17 @@ Write-Host "--------------------------------------------------------------------
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "Connecting to vCenter $VCSA"
-$vCenter = Connect-VIServer -server $VCSA -Credential $MyCredential
+$vCenter = Connect-VIServer -server $VCSA -Credential $Credential -ErrorAction Stop
 Write-Host "Connected to vCenter "
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 
-##Updating PS Window Configuration
-Write-Host "-----------------------------------------------------------------------------------------------------------------------"
-Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
-Write-Host "Updating PowerShell Window info"
-$pshost = get-host
-$pswindow = $pshost.ui.rawui
-#$newsize = $pswindow.buffersize
-#$newsize.height = 30000
-#$newsize.width = 130
-#$pswindow.buffersize = $newsize
-#$newsize = $pswindow.windowsize
-#$newsize.height = (get-host).UI.RawUI.MaxWindowSize.Height
-#$newsize.width = 130
-$pswindow.windowtitle = "Please Select Cluster"
-#$pswindow.windowsize = $newsize
-Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
-Write-Host "-----------------------------------------------------------------------------------------------------------------------"
-
+If(!$VMHost){
 ##Select CLUSTER
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
-CLS
 Write-Host "Select Cluster on vCenter $VCSA"
-$CLUSTER = Get-Cluster | Sort Name
+$CLUSTER = Get-Cluster | Sort-Object Name
 $countCL = 0   
 Write-Host " " 
 Write-Host "Clusters: " 
@@ -129,30 +194,11 @@ Write-Host "You have selected Cluster $CLUSTER on vCenter $VCSA"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 
-##Updating PS Window Configuration
-Write-Host "-----------------------------------------------------------------------------------------------------------------------"
-Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
-Write-Host "Updating PowerShell Window info"
-$pshost = get-host
-$pswindow = $pshost.ui.rawui
-#$newsize = $pswindow.buffersize
-#$newsize.height = 30000
-#$newsize.width = 130
-#$pswindow.buffersize = $newsize
-#$newsize = $pswindow.windowsize
-#$newsize.height = (get-host).UI.RawUI.MaxWindowSize.Height
-#$newsize.width = 130
-$pswindow.windowtitle = "Please Select Host on Cluster $CLUSTER"
-#$pswindow.windowsize = $newsize
-Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
-Write-Host "-----------------------------------------------------------------------------------------------------------------------"
-
 ##Select VMHost
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
-CLS
 Write-Host "Select VMHost on vCenter $VCSA in Cluster $CLUSTER"
-$VMHOST = Get-Cluster $CLUSTER| Get-VMHost | Sort Name
+$VMHOST = Get-Cluster $CLUSTER| Get-VMHost | Sort-Object Name
 $countCL = 0   
 Write-Host " " 
 Write-Host "VMHost: " 
@@ -164,24 +210,28 @@ foreach($oC in $VMHOST)
 }
 Write-Host " "   
 $choice = Read-Host "Which VMHost do you wish to review?"
-$VMHOST = get-vmhost $VMHOST[$choice]
+$VMHOST = Get-VMHost $VMHOST[$choice]
 $HOSTNAME = $VMHOST.NAME
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+}Else{
+	$VMHOSTOBJ = Get-VMHost $VMHOST
+	$HOSTNAME = $VMHOSTOBJ.NAME
+}
 
 ##Get Date Info for Logging
 $LOGDATE = Get-Date -format "MMM-dd-yyyy_HH-mm"
 ##Specify Log File Info
 $LOGFILENAME = "Log_" + $HOSTNAME + "_" + $LOGDATE + ".txt"
 #Create Log Folder
-$LogFolder = $pwd.path+"\Log"
+$LogFolder = $LOCATION.path+"\Log"
 If (Test-Path $LogFolder){
 	Write-Host "Log Directory Created. Continuing..."
 }Else{
 	New-Item $LogFolder -type directory
 }
 #Specify Log File
-$LOGFILE = $pwd.path+"\Log\"+$LOGFILENAME
+$LOGFILE = $LOCATION.path+"\Log\"+$LOGFILENAME
 
 ##Starting Logging
 Start-Transcript -path $LOGFILE -Append
@@ -191,23 +241,90 @@ Write-Host "Script Logging Started"
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 
-##Updating PS Window Configuration
-Write-Host "-----------------------------------------------------------------------------------------------------------------------"
-Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
-Write-Host "Updating PowerShell Window info"
-$pshost = get-host
-$pswindow = $pshost.ui.rawui
-#$newsize = $pswindow.buffersize
-#$newsize.height = 30000
-#$newsize.width = 130
-#$pswindow.buffersize = $newsize
-#$newsize = $pswindow.windowsize
-#$newsize.height = (get-host).UI.RawUI.MaxWindowSize.Height
-#$newsize.width = 130
-$pswindow.windowtitle = "Removing VIBs on $VMHOST [$choice]"
-#$pswindow.windowsize = $newsize
-Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
-Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+#Check if VMHost is part of a Cluster (DRS)
+If($VMHOSTOBJ.ConnectionState -eq "Maintenance"){
+	Write-Host "VMHost now in Maintenance Mode - $($VMHOSTOBJ.Name)"
+}Else{
+	$CLUSTER = $VMHOSTOBJ | Get-Cluster -ErrorAction SilentlyContinue
+	$VSANENABLED = $CLUSTER.VsanEnabled
+	$MaintenanceOnly = $true
+	$Shutdown = $false
+	$RunAsync = $false
+	If($MaintenanceOnly -eq $true -or $Reboot -eq $true -or $Shutdown -eq $true){
+		#VMHost Maintenance Mode
+		If($VMHOSTOBJ.ConnectionState -ne "Maintenance|NotResponding"){
+			Write-Host "Putting VMHost Into Maintenance Mode - $VMHOSTOBJ "
+			$COUNT = 0
+			$COUNTMAX = 3
+			Do{
+				If($Shutdown -eq $true){
+					If($RunAsync -eq $true){
+						Write-Host "Async Set to TRUE, Not waiting for Maintenance Confirmation on VMHost - $VMHOSTOBJ"
+						If($VSANENABLED -eq $true){
+							Write-Host "vSAN Node Detected. Doing vSAN Full Data Migration for Maintenance Mode."
+							$VMHOSTOBJ | Set-VMHost -State Maintenance -VsanDataMigrationMode Full -RunAsync -Confirm:$false
+						}Else{
+							$VMHOSTOBJ | Set-VMHost -State Maintenance -RunAsync -Confirm:$false
+						}
+					}Else{
+						If($VSANENABLED -eq $true){
+							Write-Host "vSAN Node Detected. Doing vSAN Full Data Migration for Maintenance Mode."
+							$VMHOSTOBJ | Set-VMHost -State Maintenance -VsanDataMigrationMode Full -Confirm:$false
+
+						}Else{
+							$VMHOSTOBJ | Set-VMHost -State Maintenance -Confirm:$false
+						}
+					}
+				}Else{
+					If($RunAsync -eq $true){
+						Write-Host "Async Set to TRUE, Not waiting for Maintenance Confirmation on VMHost - $VMHOSTOBJ"
+						If($CLUSTER.Count -ne 0){
+							If($VSANENABLED -eq $true){
+								Write-Host "vSAN Node Detected. Doing vSAN Full Data Migration for Maintenance Mode."
+								$VMHOSTOBJ | Set-VMHost -State Maintenance -VsanDataMigrationMode Full -RunAsync -Evacuate:$true -Confirm:$false
+							}Else{
+								$VMHOSTOBJ | Set-VMHost -State Maintenance -RunAsync -Evacuate:$true -Confirm:$false
+							}
+						}Else{
+							If($VSANENABLED -eq $true){
+								Write-Host "vSAN Node Detected. Doing vSAN Full Data Migration for Maintenance Mode."
+								$VMHOSTOBJ | Set-VMHost -State Maintenance -VsanDataMigrationMode Full -RunAsync -Confirm:$false
+							}Else{
+								$VMHOSTOBJ | Set-VMHost -State Maintenance -RunAsync -Confirm:$false
+							}
+						}
+					}Else{
+						#check if it is part of a clsuter
+						If($CLUSTER.Count -ne 0){
+							If($VSANENABLED -eq $true){
+								$VMHOSTOBJ | Set-VMHost -State Maintenance -VsanDataMigrationMode EnsureAccessibility -Evacuate:$true -Confirm:$false
+							}Else{
+								$VMHOSTOBJ | Set-VMHost -State Maintenance -Evacuate:$true -Confirm:$false
+							}
+						}Else{
+							If($VSANENABLED -eq $true){
+								$VMHOSTOBJ | Set-VMHost -State Maintenance -VsanDataMigrationMode Full -Confirm:$false
+							}Else{
+								$VMHOSTOBJ | Set-VMHost -State Maintenance -Confirm:$false
+							}
+						}
+					}
+				}
+				$VMHOSTOBJ = Get-VMHost $VMHost
+				$COUNT++
+			}Until($VMHOSTOBJ.ConnectionState -eq "Maintenance" -Or $COUNT -gt $COUNTMAX)
+			If($COUNT -gt $COUNTMAX){
+				Write-Error "Count not successfully place into Maintenance Mode - $($VMHOSTOBJ.Name)" -ErrorAction Stop
+			}
+		}
+		If($VMHOSTOBJ.ConnectionState -eq "Maintenance"){
+			Write-Host "VMHost now in Maintenance Mode - $($VMHOSTOBJ.Name)"
+		}
+		If($VMHOSTOBJ.ConnectionState -eq "NotResponding"){
+			Write-Host "VMHost now in Not Responding State - $($VMHOSTOBJ.Name)"
+		}
+	}
+}
 
 #ESXCLI
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
@@ -217,15 +334,15 @@ $esxcli = Get-EsxCli -VMHost $VMHOST -V2
 
 #Get NIC Driver Name(s)
 Write-Host "Getting NIC VIBs in Use"
-$NicVIBinUse = (get-vmhost $VMHOST | Get-VMHostNetworkAdapter).ExtensionData.Driver | Sort | get-Unique
+$NicVIBinUse = (get-vmhost $VMHOST | Get-VMHostNetworkAdapter).ExtensionData.Driver | Sort-Object | get-Unique
 
 #Get FC Driver Name
 Write-Host "Getting FC VIBs in Use"
-$FCVIBinUse = (Get-VMhost $VMHOST | Get-VMHostHBA -Type FibreChannel).Driver | Sort | Get-Unique
+$FCVIBinUse = (Get-VMhost $VMHOST | Get-VMHostHBA -Type FibreChannel).Driver | Sort-Object | Get-Unique
 
 #Get Block Driver Name
 Write-Host "Getting Block VIBs in Use"
-$BlockVIBinUse = (Get-VMhost $VMHOST | Get-VMHostHBA -Type Block).Driver | Sort | Get-Unique
+$BlockVIBinUse = (Get-VMhost $VMHOST | Get-VMHostHBA -Type Block).Driver | Sort-Object | Get-Unique
 
 #Get SCSI Driver Name
 Write-Host "Getting SCSI VIBs in Use"
@@ -235,124 +352,6 @@ $SCSIVIBinUse = (Get-VMhost $VMHOST | Get-VMHostHBA -Type ParallelScsi).Driver
 Write-Host "Getting All VIBs installed on Host"
 $VIBSONHOST = $esxcli.software.vib.list.invoke()
 
-#List NIC VIBs on Host
-$VIBLISTTOREMOVE = "ata-pata-amd",`
-"ata-pata-atiixp",`
-"ata-pata-cmd64x",`
-"ata-pata-hpt3x2n",`
-"ata-pata-pdc2027x",`
-"ata-pata-serverworks",`
-"ata-pata-sil680",`
-"ata-pata-via",`
-"block-cciss",`
-"bnxtnet",`
-"bnxtroce",`
-"brcmfcoe",`
-"elx-esx-libelxima.so",`
-"elx-esx-libelxima-8169922.so",`
-"elxiscsi",`
-"elxnet",`
-"igbn",`
-"ima-qla4xxx",`
-"ixgben",`
-"lpnic",`
-"lsi-mr3",`
-"lsi-msgpt2",`
-"lsi-msgpt3",`
-"lsi-msgpt35",`
-"lsu-lsi-drivers-plugin",`
-"lsu-lsi-lsi-mr3-plugin",`
-"lsu-lsi-lsi-msgpt3-plugin",`
-"lsu-lsi-megaraid-sas-plugin",`
-"lsu-lsi-mpt2sas-plugin",`
-"mtip32xx-native",`
-"ne1000",`
-"nenic",`
-"net-enic",`
-"net-mlx4-en",`
-"net-mlx4-core",`
-"net-nx-nic",`
-"net-tg3",`
-"nfnic",`
-"nmlx4-core",`
-"nmlx4-en",`
-"nmlx4-rdma",`
-"nmlx5-core",`
-"nmlx5-rdma",`
-"nmst",`
-"qcnic",`
-"qedf",`
-"qedi",`
-"qedrntv",`
-"qfle3f",`
-"qfle3i",`
-"qflge",`
-"sata-sata-nv",`
-"sata-sata-promise",`
-"sata-sata-sil",`
-"sata-sata-sil24",`
-"sata-sata-svw",`
-"scsi-aacraid",`
-"scsi-adp94xx",`
-"scsi-aic79xx",`
-"scsi-fnic",`
-"scsi-ips",`
-"scsi-megaraid2",`
-"scsi-megaraid-mbox",`
-"scsi-megaraid-sas",`
-"scsi-mpt2sas",`
-"scsi-mptsas",`
-"scsi-mptspi",`
-"scsi-qla4xxx",`
-"sfvmk",`
-"ima-be2iscsi",`
-"intelcim-provider",`
-"hpnmi",`
-"net-i40e",`
-"net-igb",`
-"net-ixgbe",`
-"net-mst",`
-"net-qlcnic",`
-"net-bnx2",`
-"net-bnx2x",`
-"scsi-bnx2fc",`
-"scsi-bnx2i",`
-"scsi-hpsa",`
-"scsi-lpfc820",`
-"scsi-qla2xxx",`
-"net-cnic",`
-"misc-cnic-register",`
-"scsi-bfa",`
-"scsi-hpvsa",`
-"hpe-nmi",`
-"vr2c-firewall",`
-"vmware-hbr-agent" #,`
-#"epsec-mux" #Added this temporarily to clean off NSX-V from hosts in Trad
-
-#Added vr2c-firewall for traditional hosts #vSphere Replication VIB is an old version
-#List must Be in this order for VIBs to remove correctly due to dependencies
-
-<#
-Added list of VIBs to for removal on 12-11-2020 based on findings in TRAD E
-Name               ID                                                                     Description                                               Version                             CreationDate
-----               --                                                                     -----------                                               -------                             ------------
-hpnmi              Hewlett-Packard_bootbank_hpnmi_550.2.3.5-1198610                       HP NMI Sourcing module for ESX 5.5                        550.2.3.5-1198610                   2013-10-31
-misc-cnic-register QLogic_bootbank_misc-cnic-register_1.713.10.v55.1-1OEM.550.0.0.1331820 QLogic CNIC Registration Agent                            1.713.10.v55.1-1OEM.550.0.0.1331820 2015-09-28
-net-bnx2           QLogic_bootbank_net-bnx2_2.2.6a.v55.4-1OEM.550.0.0.1331820             QLogic Gigabit Ethernet Driver                            2.2.6a.v55.4-1OEM.550.0.0.1331820   2016-02-29
-net-bnx2x          QLogic_bootbank_net-bnx2x_2.713.10.v55.4-1OEM.550.0.0.1331820          QLogic QLE84xx/34xx/74xx 10G/20G Ethernet Driver          2.713.10.v55.4-1OEM.550.0.0.1331820 2016-02-08
-net-cnic           QLogic_bootbank_net-cnic_2.713.20.v55.5-1OEM.550.0.0.1331820           QLogic CNIC Ethernet Driver                               2.713.20.v55.5-1OEM.550.0.0.1331820 2016-08-16
-net-i40e           Intel_bootbank_net-i40e_1.3.45-1OEM.550.0.0.1331820                    Intel(R) Ethernet Connection XL710 Network Driver         1.3.45-1OEM.550.0.0.1331820         2015-09-29
-net-igb            Intel_bootbank_net-igb_5.3.2-1OEM.550.0.0.1331820                      Intel(R) Gigabit Ethernet Network Driver                  5.3.2-1OEM.550.0.0.1331820          2016-01-26
-net-ixgbe          Intel_bootbank_net-ixgbe_4.1.1.4-1OEM.550.0.0.1331820                  Intel(R) 10 Gigabit Ethernet Network Driver               4.1.1.4-1OEM.550.0.0.1331820        2016-02-09
-net-mst            Mellanox_bootbank_net-mst_4.3.0.29-1OEM.550.0.0.1331820                MST MODULE                                                4.3.0.29-1OEM.550.0.0.1331820       2016-03-07
-net-qlcnic         QLogic_bootbank_net-qlcnic_5.5.190-1OEM.550.0.0.1331820                QLogic 10G Ethernet Driver                                5.5.190-1OEM.550.0.0.1331820        2014-03-31
-scsi-bnx2fc        QLogic_bootbank_scsi-bnx2fc_1.713.20.v55.4-1OEM.550.0.0.1331820        QLogic 10 Gigabit ESX Ethernet FCoE Offload Driver        1.713.20.v55.4-1OEM.550.0.0.1331820 2016-08-16
-scsi-bnx2i         QLogic_bootbank_scsi-bnx2i_2.713.10.v55.3-1OEM.550.0.0.1331820         QLogic 1/10 Gigabit ESX Ethernet iSCSI HBA Driver         2.713.10.v55.3-1OEM.550.0.0.1331820 2016-03-04
-scsi-hpsa          HPE_bootbank_scsi-hpsa_5.5.0.124-1OEM.550.0.0.1331820                  HPE Smart Array SCSI Driver                               5.5.0.124-1OEM.550.0.0.1331820      2016-11-17
-scsi-lpfc820       VMware_bootbank_scsi-lpfc820_8.2.3.1-129vmw.550.0.0.1331820            Emulex HBA Driver                                         8.2.3.1-129vmw.550.0.0.1331820      2013-09-19
-scsi-qla2xxx       VMware_bootbank_scsi-qla2xxx_902.k1.1-12vmw.550.3.68.3029944           see KB  http://kb.vmware.com/kb/2110239 for more details. 902.k1.1-12vmw.550.3.68.3029944     2015-08-31
-#>
-
 #Compare VIB lists and prevent the actively used VIBs from being removed
 #NIC
 ForEach($VIB in $NicVIBinUse)
@@ -360,7 +359,7 @@ ForEach($VIB in $NicVIBinUse)
 	If($VIBLISTTOREMOVE -eq $VIB)
 	{
 		Write-Host "VIB Driver found in list that is in use"
-		$VIBLISTTOREMOVE = $VIBLISTTOREMOVE | Where{$_ -ne $VIB}
+		$VIBLISTTOREMOVE = $VIBLISTTOREMOVE | Where-Object {$_ -ne $VIB}
 	}
 }
 #FC
@@ -369,7 +368,7 @@ ForEach($VIB in $FCVIBinUse)
 	If($VIBLISTTOREMOVE -eq $VIB)
 	{
 		Write-Host "VIB Driver found in list that is in use"
-		$VIBLISTTOREMOVE = $VIBLISTTOREMOVE | Where{$_ -ne $VIB}
+		$VIBLISTTOREMOVE = $VIBLISTTOREMOVE | Where-Object {$_ -ne $VIB}
 	}
 }
 #Block
@@ -378,7 +377,7 @@ ForEach($VIB in $BlockVIBinUse)
 	If($VIBLISTTOREMOVE -eq $VIB)
 	{
 		Write-Host "VIB Driver found in list that is in use"
-		$VIBLISTTOREMOVE = $VIBLISTTOREMOVE | Where{$_ -ne $VIB}
+		$VIBLISTTOREMOVE = $VIBLISTTOREMOVE | Where-Object {$_ -ne $VIB}
 	}
 }
 #SCSI
@@ -387,13 +386,13 @@ ForEach($VIB in $SCSIVIBinUse)
 	If($VIBLISTTOREMOVE -eq $VIB)
 	{
 		Write-Host "VIB Driver found in list that is in use"
-		$VIBLISTTOREMOVE = $VIBLISTTOREMOVE | Where{$_ -ne $VIB}
+		$VIBLISTTOREMOVE = $VIBLISTTOREMOVE | Where-Object {$_ -ne $VIB}
 	}
 }
 
 #List VIBS to remove
 Write-Host "$VMHOST will have these VIBs Removed:"
-Write-Output $VIBLISTTOREMOVE | Sort | ft
+Write-Output $VIBLISTTOREMOVE | Sort-Object | Format-Table
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 
@@ -420,9 +419,105 @@ ForEach ($VIB in $VIBLISTTOREMOVE)
 		Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 	}
 }
+Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "Completed removing VIBS for VMHost $VMHOST"
 Write-Host "Disconnecting ESXCLI from VMHOST $VMHOST" -ForegroundColor green
 $esxcli = $null
+Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+
+##Restart VMHost If flag is true
+If($RestartVMHost -eq $True){
+	Write-Host "-----------------------------------------------------------------------------------------------------------------------"
+	Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
+	Write-Host "VMHost Reboot Flag Selected, Rebooting VMHost - $VMHOSTOBJ"
+	$RunAsync = $false
+	If($RunAsync -eq $true){
+		Write-Host "RunAsync set to TRUE, Not waiting for Restart to Complete"
+		$VMHOSTOBJ | Restart-VMHost -Force -RunAsync -Confirm:$false
+	}Else{
+		$VMHOSTOBJ | Restart-VMHost -Force -Confirm:$false
+	}
+
+	#Wait for VMHost to show NotResponding
+	Do{
+		$VMHOSTOBJ = Get-VMHost $VMHost
+		$COUNT = 0
+		$MAXCOUNT = 20
+		If($VMHOSTOBJ.ConnectionState -ne "NotResponding"){
+			Write-Host "VMHost not back in NotResponding - Waiting - $($VMHOSTOBJ.Name)"
+			Start-Sleep -Seconds 30
+			$COUNT++
+		}
+		If($COUNT -gt $MAXCOUNT){
+			Write-Error "Timeout occured waiting for VMHost to be NotResponding" -ErrorAction Stop
+		}
+	}Until($VMHOSTOBJ.ConnectionState -eq "NotResponding" -Or $COUNT -gt $COUNTMAX)
+	If($COUNT -gt $COUNTMAX){
+		Write-Error "VMHost could not enter NotResponding State - $($VMHOSTOBJ.Name)"
+	}
+	If($VMHOSTOBJ.ConnectionState -eq "NotResponding"){
+		Write-Host "VMHost Now NotRespondong (rebooting) - $($VMHOSTOBJ.Name)" -ForegroundColor Green
+	}
+
+	#Wait for 5 minutes
+	Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
+	Write-Host "Waiting for VMHost to Reboot - $($VMHOSTOBJ.Name)" -Foregroundcolor Green
+	$WaitSeconds = 300
+	$Activity = "Waiting for $($WaitSeconds) Seconds"
+	1..$WaitSeconds | ForEach-Object { $percent = $_ * 100 / $WaitSeconds 
+		Write-Progress -Activity $Activity -Status "$($WaitSeconds - $_) Seconds remaining..." -PercentComplete $percent 
+		Start-Sleep -Seconds 1
+	}
+	Write-Progress -Completed -Activity "make progress bar disappear" -ErrorAction SilentlyContinue
+	Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
+
+	#Get VMHost Status and wait for host to be in Maintenance
+	Do{
+		$VMHOSTOBJ = Get-VMHost $VMHost
+		$COUNT = 0
+		$MAXCOUNT = 10
+		If($VMHOSTOBJ.ConnectionState -ne "Maintenance"){
+			Write-Host "VMHost not back in Mainteance Mode - Waiting - $($VMHOSTOBJ.Name)"
+			Start-Sleep -Seconds 30
+			$COUNT++
+		}
+	}Until($VMHOSTOBJ.ConnectionState -eq "Maintenance" -Or $COUNT -gt $MAXCOUNT)
+	If($COUNT -gt $MAXCOUNT){
+		Write-Error "Timeout occured waiting for VMHost to come back online - $($VMHOSTOBJ.Name)" -ErrorAction Stop
+	}
+	If($VMHOSTOBJ.ConnectionState -eq "Maintenance"){
+		Write-Host "VMHost has returned to Maintenance Mode - $($VMHOSTOBJ.Name)" -ForegroundColor Green
+		Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
+	}
+
+	#Bring VMHost out of Maintenance Mode
+	Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
+	Write-Host "Bringing VMHost out of Maintenance Mode on VMHost - $VMHOSTOBJ"
+	$VMHOSTOBJ = Get-VMHost $VMHost
+	If($VMHOSTOBJ.ConnectionState -ne "Connected"){
+		$COUNT = 0
+		$MAXCOUNT = 10
+		Do{
+			$VMHOSTOBJ | Set-VMHost -State Connected -Confirm:$false
+			$VMHOSTOBJ = Get-VMHost $VMHost
+			If($VMHOSTOBJ.ConnectionState -ne "Connected"){
+				Write-Warning "VMHost not out of Maintenance - $VMHOSTOBJ"
+				Start-Sleep -Seconds 30
+				$COUNT++
+			}
+			
+		}Until($VMHOSTOBJ.ConnectionState -eq "Connected" -Or $COUNT -gt $MAXCOUNT)
+		If($COUNT -gt $MAXCOUNT){
+			Write-Error "Reached Maximum Attempts to put VMHost into Connected Status - $VMHOSTOBJ" -ErrorAction Stop
+		}
+	}
+	If($VMHOSTOBJ.ConnectionState -eq "Connected"){
+		Write-Host "VMHost now in Connected Status - $VMHOSTOBJ"
+		Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
+	}
+}
+Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
+Write-Host "-----------------------------------------------------------------------------------------------------------------------"
 
 ##Document Script Total Run time
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
@@ -460,7 +555,5 @@ Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "Script Completed for $VCSA"
 Write-Host "VMHost $VMHOST"
 Write-Host "Cluster $CLUSTER"
-Write-Host "Press Enter to close this PowerShell Script"
-PAUSE
 Write-Host (Get-Date -format "MMM-dd-yyyy_HH-mm-ss")
 Write-Host "-----------------------------------------------------------------------------------------------------------------------"
